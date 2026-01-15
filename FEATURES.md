@@ -9,6 +9,16 @@
 4. [Feature Prioritization](#feature-prioritization)
 5. [User Stories](#user-stories)
 6. [Acceptance Criteria](#acceptance-criteria)
+7. [Feature Interaction Matrix](#feature-interaction-matrix)
+8. [Detailed Technical Specifications](#detailed-technical-specifications)
+9. [API Specifications](#api-specifications)
+10. [Data Flow Diagrams](#data-flow-diagrams)
+11. [Error Handling](#error-handling)
+12. [Feature Implementation Roadmap](#feature-implementation-roadmap)
+13. [Resource Allocation](#resource-allocation)
+14. [Risk Mitigation](#risk-mitigation)
+15. [Testing Strategy](#testing-strategy)
+16. [Success Metrics by Phase](#success-metrics-by-phase)
 
 ---
 
@@ -631,4 +641,1344 @@ F8 (WhatsApp Bot)
 
 ---
 
-This features document provides a comprehensive breakdown of all features, their requirements, dependencies, and implementation roadmap. Each feature can be further detailed into technical specifications during the design phase.
+## Feature Interaction Matrix
+
+| Feature | F1 | F2 | F3 | F4 | F5 | F6 | F7 | F8 |
+|---------|----|----|----|----|----|----|----|----|
+| **F1: Tele-Consultation** | - | Uses | Enables | Uses | Requires | Can use | - | - |
+| **F2: AI Triage** | Enables | - | - | Uses | - | - | - | - |
+| **F3: Prescription** | Uses | - | - | Uses | Requires | - | - | Enables |
+| **F4: Offline Sync** | Required | Required | Required | - | - | Required | Required | - |
+| **F5: Consent** | Required | - | Required | - | - | Required | Required | - |
+| **F6: Visual Diagnosis** | Can use | - | - | Uses | Requires | - | - | - |
+| **F7: Govt Integration** | - | - | - | Uses | Requires | - | - | - |
+| **F8: WhatsApp Bot** | - | - | Uses | - | - | - | - | - |
+
+**Legend**:
+- **Uses**: Feature depends on another feature
+- **Enables**: Feature makes another feature possible
+- **Required**: Feature is mandatory for another feature
+- **Can use**: Feature can optionally use another feature
+
+---
+
+## Detailed Technical Specifications
+
+### F1: Assisted Tele-Consultation Platform
+
+#### Component Architecture
+
+```
+TeleConsultationService
+├── ConsultationController
+│   ├── POST /api/v1/consultations
+│   ├── GET /api/v1/consultations/:id
+│   ├── POST /api/v1/consultations/:id/join
+│   ├── POST /api/v1/consultations/:id/end
+│   └── GET /api/v1/consultations/queue
+│
+├── MediaManager
+│   ├── createVideoRoom(consultationId)
+│   ├── joinRoom(userId, roomId)
+│   ├── optimizeBandwidth(connectionQuality)
+│   ├── handleLowBandwidth()
+│   └── recordSession(roomId, consent)
+│
+├── VitalsManager
+│   ├── uploadVitals(consultationId, vitals)
+│   ├── getVitals(consultationId)
+│   └── streamVitals(consultationId) // Real-time
+│
+└── QueueManager
+    ├── addToQueue(consultationId, priority)
+    ├── assignDoctor(consultationId)
+    ├── prioritizeQueue()
+    └── notifyDoctor(consultationId)
+```
+
+#### Data Models
+
+**VideoRoom**
+```typescript
+interface VideoRoom {
+  id: string;
+  consultationId: string;
+  participants: Participant[];
+  status: 'CREATED' | 'ACTIVE' | 'ENDED';
+  bandwidthMode: 'LOW' | 'MEDIUM' | 'HIGH';
+  recordingEnabled: boolean;
+  createdAt: Date;
+}
+
+interface Participant {
+  userId: string;
+  role: 'PATIENT' | 'SAHAYAK' | 'DOCTOR';
+  connectionStatus: 'CONNECTING' | 'CONNECTED' | 'DISCONNECTED';
+  videoEnabled: boolean;
+  audioEnabled: boolean;
+  joinedAt: Date;
+}
+```
+
+#### Bandwidth Optimization Strategy
+
+**Low Bandwidth (< 512 Kbps)**:
+- Video: 240p, 15fps
+- Audio: Opus codec, 32kbps
+- Fallback to audio-only if < 256 Kbps
+
+**Medium Bandwidth (512 Kbps - 1 Mbps)**:
+- Video: 360p, 20fps
+- Audio: Opus codec, 64kbps
+
+**High Bandwidth (> 1 Mbps)**:
+- Video: 480p, 30fps
+- Audio: Opus codec, 128kbps
+
+**Adaptive Algorithm**:
+1. Monitor connection quality every 5 seconds
+2. Adjust quality based on packet loss and latency
+3. Notify participants of quality changes
+4. Auto-downgrade if quality drops below threshold
+
+#### IoT Device Integration
+
+**Supported Devices**:
+- BP Monitor (Bluetooth/BLE)
+- Pulse Oximeter (Bluetooth/BLE)
+- Digital Thermometer (Bluetooth/BLE)
+
+**Integration Flow**:
+1. Sahayak pairs device via app
+2. Device sends data via BLE
+3. App validates and formats data
+4. Upload to server via WebSocket
+5. Server broadcasts to doctor's screen
+
+**Vitals Data Format**:
+```typescript
+interface VitalsData {
+  deviceType: 'BP_MONITOR' | 'OXIMETER' | 'THERMOMETER';
+  deviceId: string;
+  readings: {
+    timestamp: Date;
+    value: number;
+    unit: string;
+  }[];
+  quality: 'GOOD' | 'FAIR' | 'POOR';
+}
+```
+
+---
+
+### F2: AI-Powered Triage & Translation
+
+#### Component Architecture
+
+```
+AITriageService
+├── TranslationEngine
+│   ├── detectLanguage(text/audio)
+│   ├── translateToEnglish(text, sourceLanguage)
+│   └── normalizeText(text)
+│
+├── SymptomAnalyzer
+│   ├── extractSymptoms(translatedText)
+│   ├── classifySeverity(symptoms)
+│   └── generateSummary(symptoms, severity)
+│
+├── TriageEngine
+│   ├── calculateSeverityScore(symptoms, vitals)
+│   ├── recommendPriority(severityScore)
+│   └── suggestTriage(priority, symptoms)
+│
+└── LLMService
+    ├── callLLM(prompt, context)
+    ├── formatMedicalPrompt(symptoms)
+    └── parseMedicalResponse(response)
+```
+
+#### Processing Pipeline
+
+```
+Input (Voice/Text in Dialect)
+    ↓
+[Language Detection]
+    ↓
+[Speech-to-Text] (if voice)
+    ↓
+[Translation to English]
+    ↓
+[Medical Symptom Extraction] (LLM)
+    ↓
+[Severity Classification] (ML Model)
+    ↓
+[Medical Summary Generation] (LLM)
+    ↓
+[Priority Assignment]
+    ↓
+Output (Structured Medical Data)
+```
+
+#### LLM Prompts
+
+**Symptom Extraction Prompt**:
+```
+You are a medical assistant. Extract and structure the following patient symptoms:
+
+Patient Description: {translatedText}
+
+Provide:
+1. Primary symptoms (list)
+2. Secondary symptoms (list)
+3. Duration of symptoms
+4. Severity (1-10 scale)
+5. Possible conditions (list)
+6. Urgency level (LOW/MEDIUM/HIGH/CRITICAL)
+```
+
+**Medical Summary Prompt**:
+```
+Create a concise medical summary for a doctor:
+
+Symptoms: {extractedSymptoms}
+Vitals: {vitalsData}
+Duration: {duration}
+Patient Age: {age}
+Gender: {gender}
+
+Format as:
+- Chief Complaint
+- History of Present Illness
+- Review of Systems
+- Assessment
+- Plan
+```
+
+#### Severity Scoring Model
+
+**Factors**:
+- Symptom intensity (1-10)
+- Symptom duration
+- Vital signs deviation
+- Pain level (if applicable)
+- Functional impact
+
+**Scoring Algorithm**:
+```
+severityScore = (
+  symptomIntensity * 0.3 +
+  durationFactor * 0.2 +
+  vitalsDeviation * 0.3 +
+  painLevel * 0.1 +
+  functionalImpact * 0.1
+) * 10
+```
+
+**Priority Mapping**:
+- 0-3: LOW
+- 4-6: MEDIUM
+- 7-8: HIGH
+- 9-10: CRITICAL
+
+#### Supported Languages
+
+**Phase 1** (MVP):
+- Hindi
+- English
+- Telugu
+- Tamil
+
+**Phase 2**:
+- Bengali
+- Marathi
+- Gujarati
+- Kannada
+- Malayalam
+- Punjabi
+
+---
+
+### F3: Prescription & Fulfillment Engine
+
+#### Component Architecture
+
+```
+PrescriptionService
+├── PrescriptionController
+│   ├── POST /api/v1/prescriptions
+│   ├── GET /api/v1/prescriptions/:id
+│   ├── GET /api/v1/prescriptions/patient/:patientId
+│   └── POST /api/v1/prescriptions/:id/refill
+│
+├── PharmacyIntegration
+│   ├── checkAvailability(medicineId, quantity)
+│   ├── getPharmacyList(location, medicineIds)
+│   ├── placeOrder(orderDetails)
+│   └── trackOrder(orderId)
+│
+├── OrderManager
+│   ├── createOrder(prescriptionId, pharmacyId)
+│   ├── updateOrderStatus(orderId, status)
+│   └── getOrderHistory(patientId)
+│
+└── NotificationService
+    ├── sendPrescription(prescriptionId, channel)
+    ├── sendOrderUpdate(orderId, status)
+    └── sendReminder(prescriptionId, type)
+```
+
+#### Prescription Data Model
+
+```typescript
+interface Prescription {
+  id: string;
+  consultationId: string;
+  patientId: string;
+  doctorId: string;
+  medicines: Medicine[];
+  instructions: string;
+  followUpDate: Date | null;
+  status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  createdAt: Date;
+  digitalSignature: string; // For tamper-proofing
+}
+
+interface Medicine {
+  name: string;
+  genericName: string;
+  dosage: string; // e.g., "500mg"
+  frequency: string; // e.g., "Twice daily"
+  duration: string; // e.g., "7 days"
+  quantity: number;
+  instructions: string; // e.g., "After meals"
+  available: boolean;
+  pharmacyPrice: number;
+}
+```
+
+#### Pharmacy Integration
+
+**Pharmacy Partner API Contract**:
+```typescript
+interface PharmacyAPI {
+  // Check medicine availability
+  checkAvailability(request: {
+    medicineIds: string[];
+    location: { lat: number; lng: number; };
+    radius: number; // km
+  }): Promise<PharmacyAvailability[]>;
+  
+  // Place order
+  placeOrder(order: {
+    prescriptionId: string;
+    medicines: MedicineOrder[];
+    deliveryAddress: Address;
+    patientId: string;
+  }): Promise<OrderResponse>;
+  
+  // Track order
+  trackOrder(orderId: string): Promise<OrderStatus>;
+}
+
+interface PharmacyAvailability {
+  pharmacyId: string;
+  pharmacyName: string;
+  distance: number; // km
+  medicines: {
+    medicineId: string;
+    available: boolean;
+    price: number;
+    estimatedDelivery: Date;
+  }[];
+}
+```
+
+#### Order Status Flow
+
+```
+PENDING
+  ↓
+CONFIRMED (Pharmacy confirms)
+  ↓
+PREPARING (Pharmacy preparing order)
+  ↓
+DISPATCHED (Out for delivery)
+  ↓
+DELIVERED
+  ↓
+COMPLETED
+```
+
+**Alternative Flow**:
+```
+PENDING
+  ↓
+CANCELLED (by patient/pharmacy)
+```
+
+---
+
+### F4: Offline Sync & Storage
+
+#### Component Architecture
+
+```
+OfflineSyncService
+├── LocalStorageManager
+│   ├── save(entityType, entity)
+│   ├── find(entityType, id)
+│   ├── findAll(entityType, filters)
+│   └── delete(entityType, id)
+│
+├── SyncQueueManager
+│   ├── enqueue(operation)
+│   ├── dequeue()
+│   ├── getPendingCount()
+│   └── clearSynced()
+│
+├── SyncEngine
+│   ├── sync()
+│   ├── syncEntity(entityType, entityId)
+│   ├── detectConflict(local, remote)
+│   └── resolveConflict(conflict)
+│
+└── ConflictResolver
+    ├── resolveByTimestamp(local, remote)
+    ├── resolveByVersion(local, remote)
+    └── flagForManualResolution(conflict)
+```
+
+#### Sync Queue Structure
+
+```typescript
+interface SyncOperation {
+  id: string;
+  entityType: 'CONSULTATION' | 'VITALS' | 'PRESCRIPTION' | 'PATIENT' | 'CONSENT';
+  entityId: string;
+  operation: 'CREATE' | 'UPDATE' | 'DELETE';
+  payload: any;
+  localVersion: number;
+  remoteVersion: number | null;
+  deviceId: string;
+  timestamp: Date;
+  status: 'PENDING' | 'SYNCING' | 'SYNCED' | 'FAILED' | 'CONFLICT';
+  retryCount: number;
+  lastError?: string;
+  syncedAt?: Date;
+}
+```
+
+#### Conflict Resolution Strategies
+
+**Strategy 1: Last Write Wins (Timestamp)**
+- Compare `updatedAt` timestamps
+- Keep the most recent version
+- Use for: Non-critical data (preferences, settings)
+
+**Strategy 2: Version-Based**
+- Compare version numbers
+- Merge if versions are compatible
+- Use for: Structured data (patient info)
+
+**Strategy 3: Manual Resolution**
+- Flag conflict for user review
+- Store both versions
+- Use for: Critical data (prescriptions, vitals)
+
+**Strategy 4: Field-Level Merge**
+- Merge non-conflicting fields
+- Flag conflicting fields
+- Use for: Complex entities (consultations)
+
+#### Sync Triggers
+
+1. **Automatic**:
+   - On connectivity restore
+   - Periodic (every 5 minutes when online)
+   - After local write operation (if online)
+
+2. **Manual**:
+   - User-triggered sync button
+   - Pull-to-refresh gesture
+
+3. **Priority-Based**:
+   - Critical operations first (prescriptions, vitals)
+   - Then regular operations
+   - Finally, background sync (logs, analytics)
+
+#### Local Database Schema (SQLite)
+
+```sql
+-- Entities table (generic)
+CREATE TABLE entities (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  data TEXT NOT NULL, -- JSON
+  version INTEGER DEFAULT 1,
+  updated_at INTEGER NOT NULL,
+  synced_at INTEGER,
+  INDEX idx_type (type),
+  INDEX idx_synced (synced_at)
+);
+
+-- Sync queue
+CREATE TABLE sync_queue (
+  id TEXT PRIMARY KEY,
+  entity_type TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  operation TEXT NOT NULL,
+  payload TEXT NOT NULL, -- JSON
+  status TEXT DEFAULT 'PENDING',
+  retry_count INTEGER DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  INDEX idx_status (status)
+);
+
+-- Conflict log
+CREATE TABLE conflicts (
+  id TEXT PRIMARY KEY,
+  entity_type TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  local_data TEXT NOT NULL, -- JSON
+  remote_data TEXT NOT NULL, -- JSON
+  resolution_strategy TEXT,
+  resolved_at INTEGER,
+  created_at INTEGER NOT NULL
+);
+```
+
+---
+
+### F5: Consent & Privacy (DPDP Act Compliance)
+
+#### Component Architecture
+
+```
+ConsentPrivacyService
+├── ConsentManager
+│   ├── requestConsent(patientId, consentType, grantedTo)
+│   ├── verifyConsent(consentId, method, token)
+│   ├── revokeConsent(consentId)
+│   └── getConsentStatus(patientId, consentType)
+│
+├── AccessControl
+│   ├── checkPermission(userId, resource, action)
+│   ├── enforceRBAC(userId, resource)
+│   └── auditAccess(userId, resource, action)
+│
+├── EncryptionService
+│   ├── encryptData(data, keyId)
+│   ├── decryptData(encryptedData, keyId)
+│   └── rotateKeys()
+│
+└── AuditLogger
+    ├── logAccess(userId, resource, action, result)
+    ├── logConsent(consentId, action)
+    └── generateAuditReport(filters)
+```
+
+#### Consent Types
+
+```typescript
+enum ConsentType {
+  DATA_SHARING = 'DATA_SHARING', // Share data with doctor
+  RECORDING = 'RECORDING', // Record consultation
+  PHARMACY_SHARING = 'PHARMACY_SHARING', // Share prescription with pharmacy
+  GOVT_SCHEME = 'GOVT_SCHEME', // Share with government schemes
+  RESEARCH = 'RESEARCH', // Use data for research (anonymized)
+  ANALYTICS = 'ANALYTICS' // Use for analytics (anonymized)
+}
+```
+
+#### Verification Methods
+
+**OTP Verification**:
+1. Generate 6-digit OTP
+2. Send via SMS
+3. Patient enters OTP
+4. Verify and grant consent
+5. Expires in 10 minutes
+
+**Biometric Verification**:
+1. Request biometric (fingerprint/face)
+2. Capture biometric data
+3. Verify against stored template
+4. Grant consent if match
+5. Store verification record
+
+**Signature Verification**:
+1. Display consent terms
+2. Patient signs on screen
+3. Store signature image
+4. Grant consent
+5. Signature is legally binding
+
+#### RBAC Model
+
+```typescript
+enum Role {
+  PATIENT = 'PATIENT',
+  SAHAYAK = 'SAHAYAK',
+  DOCTOR = 'DOCTOR',
+  ADMIN = 'ADMIN',
+  PHARMACY = 'PHARMACY',
+  GOVT_SCHEME = 'GOVT_SCHEME'
+}
+
+interface Permission {
+  resource: string; // e.g., 'patient.data', 'prescription'
+  actions: string[]; // e.g., ['read', 'write']
+  conditions?: { // Optional conditions
+    patientId?: string; // Only for specific patient
+    activeOnly?: boolean; // Only active consultations
+  };
+}
+
+const RolePermissions: Record<Role, Permission[]> = {
+  PATIENT: [
+    { resource: 'own.data', actions: ['read', 'write'] },
+    { resource: 'own.prescription', actions: ['read'] }
+  ],
+  SAHAYAK: [
+    { resource: 'patient.data', actions: ['read'], conditions: { activeOnly: true } },
+    { resource: 'vitals', actions: ['create'] }
+  ],
+  DOCTOR: [
+    { resource: 'patient.data', actions: ['read'], conditions: { patientId: 'assigned' } },
+    { resource: 'prescription', actions: ['create', 'read'] }
+  ],
+  // ... other roles
+};
+```
+
+#### Access Control Flow
+
+```
+Access Request
+    ↓
+[Check User Role]
+    ↓
+[Check Resource Permissions]
+    ↓
+[Check Consent] (if required)
+    ↓
+[Check Conditions] (activeOnly, patientId, etc.)
+    ↓
+[Log Access] (audit trail)
+    ↓
+Grant/Deny Access
+```
+
+---
+
+### F6: Visual Diagnosis Aid
+
+#### Component Architecture
+
+```
+VisualDiagnosisService
+├── ImageProcessor
+│   ├── uploadImage(file, patientId)
+│   ├── validateImage(file)
+│   ├── compressImage(image)
+│   └── storeImage(imageId, url)
+│
+├── CVModel
+│   ├── analyzeImage(imageUrl)
+│   ├── classifyCondition(image)
+│   ├── calculateConfidence(predictions)
+│   └── generateReport(analysis)
+│
+└── ReportGenerator
+    ├── createReport(analysis, patientInfo)
+    ├── suggestFollowUp(condition)
+    └── compareImages(before, after)
+```
+
+#### Supported Conditions
+
+**Phase 1**:
+- Skin rashes
+- Wounds (healing assessment)
+- Burns
+- Infections
+- Allergic reactions
+
+**Phase 2**:
+- Dermatitis
+- Psoriasis
+- Eczema
+- Fungal infections
+- Vitiligo
+
+#### CV Model Output
+
+```typescript
+interface ImageAnalysis {
+  imageId: string;
+  conditions: ConditionPrediction[];
+  confidence: number; // Overall confidence (0-1)
+  recommendations: string[];
+  severity: 'MILD' | 'MODERATE' | 'SEVERE';
+  requiresUrgentCare: boolean;
+}
+
+interface ConditionPrediction {
+  condition: string;
+  confidence: number; // 0-1
+  description: string;
+  treatmentSuggestions: string[];
+}
+```
+
+#### Image Requirements
+
+- **Format**: JPG, PNG
+- **Size**: Max 10MB
+- **Resolution**: Min 640x480
+- **Compression**: Automatic compression to < 2MB
+- **Privacy**: Images encrypted at rest
+
+---
+
+### F7: Government Scheme Integration
+
+#### Component Architecture
+
+```
+GovtSchemeService
+├── ABHAService
+│   ├── validateABHA(abhaId)
+│   ├── verifyIdentity(abhaId, otp)
+│   └── fetchHealthRecords(abhaId)
+│
+├── EligibilityService
+│   ├── checkEligibility(abhaId, scheme)
+│   ├── getCoverageDetails(abhaId)
+│   └── calculateCoPayment(consultation, coverage)
+│
+├── ClaimService
+│   ├── submitClaim(consultationId, abhaId)
+│   ├── trackClaim(claimId)
+│   └── getClaimHistory(abhaId)
+│
+└── CacheManager
+    ├── cacheEligibility(abhaId, data, ttl)
+    ├── getCachedEligibility(abhaId)
+    └── invalidateCache(abhaId)
+```
+
+#### ABHA Integration
+
+**API Endpoints** (Government):
+```
+POST /abha/validate
+  Request: { abhaId: string }
+  Response: { valid: boolean, name: string }
+
+POST /abha/verify
+  Request: { abhaId: string, otp: string }
+  Response: { verified: boolean, token: string }
+
+GET /abha/health-records
+  Headers: { Authorization: Bearer <token> }
+  Response: { records: HealthRecord[] }
+```
+
+#### Eligibility Check Flow
+
+```
+Patient provides ABHA ID
+    ↓
+[Validate ABHA ID]
+    ↓
+[Check Cache] (if cached and valid)
+    ↓
+[Call Govt API] (if not cached)
+    ↓
+[Check Eligibility]
+    ↓
+[Calculate Coverage]
+    ↓
+[Cache Result] (24 hours)
+    ↓
+[Display to Patient/Doctor]
+```
+
+#### Supported Schemes
+
+**Phase 1**:
+- Ayushman Bharat Pradhan Mantri Jan Arogya Yojana (AB-PMJAY)
+
+**Phase 2**:
+- State-specific health schemes
+- Employee State Insurance (ESI)
+- Central Government Health Scheme (CGHS)
+
+---
+
+### F8: WhatsApp Bot for Follow-ups
+
+#### Component Architecture
+
+```
+WhatsAppBotService
+├── MessageHandler
+│   ├── receiveMessage(phoneNumber, message)
+│   ├── sendMessage(phoneNumber, message)
+│   ├── sendReminder(phoneNumber, type, data)
+│   └── handleQuery(phoneNumber, query)
+│
+├── ReminderScheduler
+│   ├── scheduleReminder(patientId, type, time)
+│   ├── cancelReminder(reminderId)
+│   └── getUpcomingReminders(patientId)
+│
+├── NLPEngine
+│   ├── understandIntent(message)
+│   ├── extractEntities(message)
+│   └── generateResponse(intent, context)
+│
+└── AppointmentManager
+    ├── bookAppointment(patientId, preferredTime)
+    ├── confirmAppointment(appointmentId)
+    └── cancelAppointment(appointmentId)
+```
+
+#### Reminder Types
+
+```typescript
+enum ReminderType {
+  MEDICATION = 'MEDICATION', // Take medicine
+  APPOINTMENT = 'APPOINTMENT', // Upcoming appointment
+  FOLLOW_UP = 'FOLLOW_UP', // Follow-up consultation
+  TEST = 'TEST', // Lab test reminder
+  HEALTH_TIP = 'HEALTH_TIP' // Preventive care tips
+}
+```
+
+#### Message Templates
+
+**Medication Reminder** (Hindi):
+```
+नमस्ते {patientName},
+
+यह आपकी दवा का समय है:
+- दवा: {medicineName}
+- मात्रा: {dosage}
+- समय: {time}
+
+कृपया दवा लें और "हाँ" लिखकर पुष्टि करें।
+
+धन्यवाद,
+GramSeva Health
+```
+
+**Appointment Reminder** (English):
+```
+Hello {patientName},
+
+Your appointment is scheduled for:
+- Date: {date}
+- Time: {time}
+- Doctor: {doctorName}
+
+Reply "CONFIRM" to confirm or "RESCHEDULE" to change.
+
+Thank you,
+GramSeva Health
+```
+
+#### NLP Intent Classification
+
+**Intents**:
+- `MEDICATION_QUERY`: Questions about medicines
+- `APPOINTMENT_BOOKING`: Book/reschedule appointment
+- `SYMPTOM_QUERY`: Ask about symptoms
+- `PRESCRIPTION_QUERY`: Questions about prescription
+- `GENERAL_QUERY`: General health questions
+- `GREETING`: Greetings
+- `THANK_YOU`: Thank you messages
+
+**Entity Extraction**:
+- Medicine names
+- Dates/times
+- Symptoms
+- Appointment IDs
+
+---
+
+## API Specifications
+
+### Common API Patterns
+
+#### Authentication
+All APIs require JWT token in header:
+```
+Authorization: Bearer <token>
+```
+
+#### Response Format
+```typescript
+interface APIResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: {
+    code: string;
+    message: string;
+    details?: any;
+  };
+  timestamp: Date;
+}
+```
+
+#### Pagination
+```typescript
+interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}
+```
+
+#### Error Codes
+- `400`: Bad Request
+- `401`: Unauthorized
+- `403`: Forbidden (no consent/permission)
+- `404`: Not Found
+- `409`: Conflict (sync conflict)
+- `429`: Rate Limited
+- `500`: Internal Server Error
+- `503`: Service Unavailable
+
+---
+
+## Data Flow Diagrams
+
+### Consultation Flow (Detailed)
+
+```
+[Patient] → [Sahayak App]
+    ↓
+[Sahayak registers/authenticates patient]
+    ↓
+[Patient describes symptoms] → [AI Service]
+    ↓
+[AI translates & analyzes] → [Severity Score]
+    ↓
+[Consultation created] → [Queue Service]
+    ↓
+[Doctor notified] → [Doctor App]
+    ↓
+[Doctor accepts] → [Video Room created]
+    ↓
+[All parties join] → [Media Server]
+    ↓
+[Sahayak uploads vitals] → [Real-time sync]
+    ↓
+[Doctor sees vitals] → [Consultation proceeds]
+    ↓
+[Doctor generates prescription] → [Prescription Service]
+    ↓
+[Prescription sent to patient] → [Notification Service]
+    ↓
+[Patient orders medicines] → [Pharmacy Service]
+    ↓
+[Order tracked] → [WhatsApp reminders scheduled]
+```
+
+---
+
+## Error Handling
+
+### Error Categories
+
+1. **Network Errors**:
+   - Connection timeout → Retry with exponential backoff
+   - No connectivity → Queue for offline sync
+   - Slow connection → Degrade quality
+
+2. **Authentication Errors**:
+   - Token expired → Refresh token
+   - Invalid token → Redirect to login
+   - No permission → Show error, log access attempt
+
+3. **Data Errors**:
+   - Validation failure → Show field-specific errors
+   - Conflict → Trigger conflict resolution
+   - Not found → Show user-friendly message
+
+4. **Service Errors**:
+   - External API failure → Use circuit breaker
+   - Service unavailable → Show maintenance message
+   - Rate limited → Queue request, retry later
+
+### Error Recovery Strategies
+
+- **Automatic Retry**: Network errors, transient failures
+- **Manual Retry**: User-triggered for failed operations
+- **Graceful Degradation**: Fallback to basic features
+- **Offline Mode**: Queue operations, sync later
+- **User Notification**: Clear error messages with actions
+
+---
+
+## Feature Implementation Roadmap
+
+### Phase 0: Foundation (Weeks 1-4)
+
+**Goal**: Establish core infrastructure and foundational features
+
+#### Features
+- ✅ **F4: Offline Sync & Storage** (Weeks 1-2)
+- ✅ **F5: Consent & Privacy** (Weeks 2-3)
+- ✅ **Infrastructure Setup** (Weeks 1-4)
+  - Database setup
+  - API Gateway
+  - Authentication service
+  - Logging & monitoring
+  - CI/CD pipeline
+
+#### Deliverables
+- Local database (SQLite) with sync capability
+- RBAC system
+- Consent management system
+- Basic authentication & authorization
+- Infrastructure monitoring
+
+#### Success Criteria
+- ✅ Data can be stored offline and synced when online
+- ✅ Access control enforced for all endpoints
+- ✅ Consent can be requested, verified, and revoked
+- ✅ System is monitored and logged
+
+---
+
+### Phase 1: Core Consultation (Weeks 5-10)
+
+**Goal**: Enable basic tele-consultation functionality
+
+#### Features
+- ✅ **F2: AI Triage & Translation** (Weeks 5-7)
+  - Language detection
+  - Translation service
+  - Symptom extraction
+  - Severity scoring
+- ✅ **F1: Assisted Tele-Consultation** (Weeks 7-10)
+  - Video call setup
+  - Multi-party video
+  - Vitals upload
+  - Basic bandwidth optimization
+
+#### Dependencies
+- Requires: F4 (Offline Sync), F5 (Consent)
+- Enables: F3 (Prescription)
+
+#### Deliverables
+- AI translation service (10 languages)
+- Video consultation platform
+- Real-time vitals display
+- Consultation queue system
+
+#### Success Criteria
+- ✅ Symptoms can be translated from local language to English
+- ✅ Video consultation works with 256 Kbps bandwidth
+- ✅ Vitals appear on doctor's screen in real-time
+- ✅ Consultations are prioritized by severity
+
+---
+
+### Phase 2: Prescription & Fulfillment (Weeks 11-14)
+
+**Goal**: Complete the consultation-to-medicine delivery flow
+
+#### Features
+- ✅ **F3: Prescription & Fulfillment** (Weeks 11-14)
+  - Digital prescription generation
+  - Pharmacy integration
+  - Order management
+  - Delivery tracking
+
+#### Dependencies
+- Requires: F1 (Tele-Consultation), F4 (Offline Sync), F5 (Consent)
+- Enables: F8 (WhatsApp Bot)
+
+#### Deliverables
+- Prescription generation service
+- Pharmacy partner integrations (3-5 partners)
+- Order tracking system
+- Notification service
+
+#### Success Criteria
+- ✅ Prescriptions generated within 2 seconds
+- ✅ Medicine availability checked in real-time
+- ✅ Orders can be tracked end-to-end
+- ✅ At least 3 pharmacy partners integrated
+
+---
+
+### Phase 3: Enhanced Features (Weeks 15-20)
+
+**Goal**: Add value-added features to improve diagnosis and access
+
+#### Features
+- ✅ **F6: Visual Diagnosis Aid** (Weeks 15-17)
+  - Image upload & processing
+  - CV model integration
+  - Condition classification
+  - Report generation
+- ✅ **F7: Government Scheme Integration** (Weeks 17-20)
+  - ABHA validation
+  - Eligibility checking
+  - Health record fetching
+  - Claim submission
+
+#### Dependencies
+- F6 requires: F1 (Tele-Consultation), F4 (Offline Sync), F5 (Consent)
+- F7 requires: F4 (Offline Sync), F5 (Consent)
+
+#### Deliverables
+- Image analysis service
+- CV model for skin conditions
+- ABHA integration
+- Government API integration layer
+
+#### Success Criteria
+- ✅ Images analyzed within 10 seconds
+- ✅ Condition identification >80% accurate
+- ✅ ABHA validation works offline (cached)
+- ✅ Eligibility checked in real-time
+
+---
+
+### Phase 4: Follow-up & Engagement (Weeks 21-24)
+
+**Goal**: Improve patient engagement and adherence
+
+#### Features
+- ✅ **F8: WhatsApp Bot for Follow-ups** (Weeks 21-24)
+  - Reminder scheduling
+  - Two-way communication
+  - Appointment booking
+  - Medication adherence tracking
+
+#### Dependencies
+- Requires: F3 (Prescription)
+
+#### Deliverables
+- WhatsApp Business API integration
+- NLP engine for queries
+- Reminder scheduler
+- Appointment booking via WhatsApp
+
+#### Success Criteria
+- ✅ Reminders sent at scheduled times
+- ✅ Bot responds within 2 seconds
+- ✅ Supports 5+ Indian languages
+- ✅ Appointments can be booked via WhatsApp
+
+---
+
+## Feature Dependency Timeline
+
+```
+Week 1-4:  Foundation
+  F4 ──────┐
+  F5 ──────┼───┐
+            │   │
+Week 5-10:  Core Consultation
+  F2 ──────┘   │
+  F1 ──────────┼───┐
+                │   │
+Week 11-14: Prescription
+  F3 ──────────┘   │
+                    │
+Week 15-20: Enhanced Features
+  F6 ───────────────┼───┐
+  F7 ───────────────┘   │
+                        │
+Week 21-24: Follow-up
+  F8 ───────────────────┘
+```
+
+---
+
+## Resource Allocation
+
+### Team Structure
+
+**Phase 0-1 (Foundation & Core)**:
+- 2 Backend Engineers
+- 1 Frontend Engineer (Mobile)
+- 1 Frontend Engineer (Web)
+- 1 DevOps Engineer
+- 1 AI/ML Engineer
+- 1 QA Engineer
+
+**Phase 2 (Prescription)**:
+- 2 Backend Engineers
+- 1 Integration Engineer (Pharmacy APIs)
+- 1 Frontend Engineer
+- 1 QA Engineer
+
+**Phase 3 (Enhanced Features)**:
+- 1 Backend Engineer
+- 1 AI/ML Engineer (CV)
+- 1 Integration Engineer (Govt APIs)
+- 1 QA Engineer
+
+**Phase 4 (Follow-up)**:
+- 1 Backend Engineer
+- 1 NLP Engineer
+- 1 Integration Engineer (WhatsApp)
+- 1 QA Engineer
+
+---
+
+## Risk Mitigation
+
+### Technical Risks
+
+| Risk | Impact | Probability | Mitigation |
+|------|--------|-------------|------------|
+| Video quality issues in low bandwidth | High | Medium | Implement aggressive bandwidth optimization, audio-only fallback |
+| Translation accuracy | High | Medium | Use multiple translation services, human review for critical cases |
+| Offline sync conflicts | Medium | High | Implement robust conflict resolution, manual resolution UI |
+| Government API reliability | Medium | High | Implement caching, circuit breakers, fallback mechanisms |
+| IoT device compatibility | Medium | Medium | Standardize on BLE, create device adapter layer |
+
+### Business Risks
+
+| Risk | Impact | Probability | Mitigation |
+|------|--------|-------------|------------|
+| Low doctor adoption | High | Medium | Provide training, simplify UI, offer incentives |
+| Patient privacy concerns | High | Low | Transparent consent, strong encryption, audit trails |
+| Pharmacy partner integration delays | Medium | Medium | Start with 1-2 partners, expand gradually |
+| Regulatory compliance issues | High | Low | Legal review, compliance audits, DPDP Act expert consultation |
+
+---
+
+## Testing Strategy
+
+### Phase 0: Foundation Testing
+- Unit tests for all core services
+- Integration tests for sync mechanism
+- Security testing for access control
+- Performance testing for local database
+
+### Phase 1: Core Consultation Testing
+- End-to-end consultation flow
+- Video call quality under various bandwidth conditions
+- Translation accuracy testing (multiple languages)
+- Load testing for consultation queue
+
+### Phase 2: Prescription Testing
+- Prescription generation accuracy
+- Pharmacy API integration testing
+- Order tracking reliability
+- Notification delivery testing
+
+### Phase 3: Enhanced Features Testing
+- CV model accuracy testing
+- Image processing performance
+- Government API integration testing
+- Offline caching for eligibility
+
+### Phase 4: Follow-up Testing
+- Reminder delivery reliability
+- NLP intent classification accuracy
+- WhatsApp API integration
+- Multi-language message delivery
+
+---
+
+## Success Metrics by Phase
+
+### Phase 0 (Foundation)
+- ✅ 100% of data operations work offline
+- ✅ 0 unauthorized access incidents
+- ✅ 100% consent verification success rate
+- ✅ <100ms access control check latency
+
+### Phase 1 (Core Consultation)
+- ✅ 95% video call success rate
+- ✅ >85% translation accuracy
+- ✅ <5 seconds symptom analysis time
+- ✅ 90% consultation completion rate
+
+### Phase 2 (Prescription)
+- ✅ 100% prescription generation success
+- ✅ <3 seconds medicine availability check
+- ✅ 95% order delivery success rate
+- ✅ 80% prescription-to-order conversion
+
+### Phase 3 (Enhanced Features)
+- ✅ >80% CV model accuracy
+- ✅ <10 seconds image analysis time
+- ✅ 95% ABHA validation success rate
+- ✅ 90% eligibility check accuracy
+
+### Phase 4 (Follow-up)
+- ✅ 95% reminder delivery success
+- ✅ <2 seconds bot response time
+- ✅ 70% medication adherence improvement
+- ✅ 60% appointment booking via WhatsApp
+
+---
+
+## Go-Live Readiness Checklist
+
+### Technical Readiness
+- [ ] All critical features implemented and tested
+- [ ] Performance benchmarks met
+- [ ] Security audit completed
+- [ ] Load testing passed
+- [ ] Disaster recovery plan in place
+- [ ] Monitoring and alerting configured
+- [ ] Documentation complete
+
+### Business Readiness
+- [ ] Doctor onboarding process defined
+- [ ] Sahayak training materials ready
+- [ ] Pharmacy partnerships established
+- [ ] Government scheme approvals obtained
+- [ ] Pricing model finalized
+- [ ] Support process defined
+
+### Compliance Readiness
+- [ ] DPDP Act compliance verified
+- [ ] Data privacy policy published
+- [ ] Consent management process documented
+- [ ] Audit logging verified
+- [ ] Data retention policy defined
+
+---
+
+## Post-Launch Enhancements
+
+### Quarter 2 (Months 4-6)
+- Advanced analytics dashboard
+- Chronic disease management module
+- Multi-language expansion (5 more languages)
+- Enhanced CV models (more conditions)
+
+### Quarter 3 (Months 7-9)
+- Specialized care consultations (cardiology, dermatology)
+- Lab test integration
+- Health records management
+- Family health tracking
+
+### Quarter 4 (Months 10-12)
+- AI-powered health recommendations
+- Preventive care programs
+- Community health initiatives
+- Integration with more government schemes
+
+---
+
+This features document provides a comprehensive breakdown of all features, their requirements, dependencies, technical specifications, API details, implementation roadmap, and success metrics. Each feature can be further detailed during the design phase.

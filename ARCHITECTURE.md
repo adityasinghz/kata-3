@@ -4,10 +4,14 @@
 
 ## Table of Contents
 1. [High-Level Design (HLD)](#high-level-design-hld)
-2. [Low-Level Design (LLD)](#low-level-design-lld)
-3. [Design Patterns](#design-patterns)
-4. [System Components](#system-components)
-5. [Data Flow](#data-flow)
+2. [Requirements-Driven Architecture](#requirements-driven-architecture)
+3. [Low-Level Design (LLD)](#low-level-design-lld)
+4. [Design Patterns](#design-patterns)
+5. [System Components](#system-components)
+6. [Data Flow](#data-flow)
+7. [Security Considerations](#security-considerations)
+8. [Scalability & Performance](#scalability--performance)
+9. [Monitoring & Observability](#monitoring--observability)
 
 ---
 
@@ -197,6 +201,737 @@ GramSeva Health is a **rural telemedicine platform** designed to bridge the heal
   - Appointment scheduling
   - Follow-up queries
   - Health tips
+
+---
+
+## Requirements-Driven Architecture
+
+> This section presents the architecture **specifically designed to fulfill the 5 core requirements**. Each requirement is mapped to its architectural components, data flows, and technology stack.
+
+### Architecture Overview: 5 Core Requirements
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    REQUIREMENT-DRIVEN ARCHITECTURE                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│  R1: Assisted Tele-Consultation    R2: AI Triage & Translation           │
+│  ┌──────────────────────────┐    ┌──────────────────────────┐          │
+│  │ • WebRTC Media Server    │    │ • LLM Service            │          │
+│  │ • IoT Device Gateway      │    │ • Speech-to-Text         │          │
+│  │ • Vitals Manager         │    │ • Translation Engine     │          │
+│  │ • Bandwidth Optimizer    │    │ • Severity Scorer        │          │
+│  └──────────────────────────┘    └──────────────────────────┘          │
+│           │                                    │                          │
+│           └────────────┬───────────────────────┘                          │
+│                        │                                                    │
+│  R3: Prescription & Fulfillment                                            │
+│  ┌──────────────────────────┐                                            │
+│  │ • Prescription Service   │                                            │
+│  │ • Pharmacy Integration   │                                            │
+│  │ • Order Manager          │                                            │
+│  └──────────────────────────┘                                            │
+│           │                                                                │
+│           │                                                                │
+│  ┌────────▼──────────────────────────────────────────┐                   │
+│  │         FOUNDATION LAYER                          │                   │
+│  ├──────────────────────────────────────────────────┤                   │
+│  │  R4: Offline Sync & Storage                       │                   │
+│  │  ┌──────────────────────────────────────────┐    │                   │
+│  │  │ • Local SQLite DB                        │    │                   │
+│  │  │ • Sync Queue Manager                     │    │                   │
+│  │  │ • Conflict Resolver                      │    │                   │
+│  │  │ • Background Sync Service               │    │                   │
+│  │  └──────────────────────────────────────────┘    │                   │
+│  │                                                   │                   │
+│  │  R5: Consent & Privacy (DPDP Act)                │                   │
+│  │  ┌──────────────────────────────────────────┐    │                   │
+│  │  │ • RBAC Service                           │    │                   │
+│  │  │ • Consent Manager                       │    │                   │
+│  │  │ • Access Control Middleware              │    │                   │
+│  │  │ • Audit Logger                          │    │                   │
+│  │  │ • Encryption Service                    │    │                   │
+│  │  └──────────────────────────────────────────┘    │                   │
+│  └──────────────────────────────────────────────────┘                   │
+│                                                                           │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### R1: Assisted Tele-Consultation Platform
+
+#### Architecture Components
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              R1: TELE-CONSULTATION ARCHITECTURE                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  ┌──────────────┐         ┌──────────────┐         ┌──────────┐ │
+│  │  Patient App  │         │ Sahayak App  │         │Doctor App│ │
+│  │  (Kiosk)      │         │  (Mobile)    │         │ (Desktop)│ │
+│  └──────┬───────┘         └──────┬───────┘         └────┬─────┘ │
+│         │                         │                       │       │
+│         │ Video Stream            │ Vitals Upload         │       │
+│         │ (Low Bandwidth)         │ (IoT Devices)          │       │
+│         │                         │                       │       │
+│  ┌──────▼─────────────────────────▼───────────────────────▼─────┐ │
+│  │              Tele-Consultation Service                        │ │
+│  ├──────────────────────────────────────────────────────────────┤ │
+│  │  ┌──────────────────┐  ┌──────────────────┐                │ │
+│  │  │  Media Manager    │  │  Vitals Manager  │                │ │
+│  │  │  • WebRTC Setup  │  │  • IoT Gateway   │                │ │
+│  │  │  • Bandwidth Opt │  │  • Real-time Sync│                │ │
+│  │  │  • Quality Adapt │  │  • Data Format   │                │ │
+│  │  └──────────────────┘  └──────────────────┘                │ │
+│  │                                                              │ │
+│  │  ┌──────────────────┐  ┌──────────────────┐                │ │
+│  │  │  Room Manager    │  │  Queue Manager   │                │ │
+│  │  │  • Create Room   │  │  • Prioritize    │                │ │
+│  │  │  • Join Room    │  │  • Assign Doctor  │                │ │
+│  │  │  • Manage Users  │  │  • Notify        │                │ │
+│  │  └──────────────────┘  └──────────────────┘                │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+│                                                                   │
+│  ┌──────────────────────────────────────────────────────────────┐ │
+│  │           Media Server (Janus/Kurento)                        │ │
+│  │  • Multi-party video routing                                   │ │
+│  │  • Adaptive bitrate streaming                                  │ │
+│  │  • Low-bandwidth optimization (256 Kbps min)                   │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+│                                                                   │
+│  ┌──────────────────────────────────────────────────────────────┐ │
+│  │           IoT Device Gateway                                  │ │
+│  │  • BLE Connection (BP Monitor, Oximeter)                       │ │
+│  │  • Data Validation                                            │ │
+│  │  • Real-time Transmission to Doctor Screen                    │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Technology Stack
+
+**Frontend**:
+- **Patient App**: React Native (offline-capable, video support)
+- **Sahayak App**: React Native (BLE for IoT, video, vitals upload)
+- **Doctor App**: React/Web (WebRTC, real-time vitals display)
+
+**Backend**:
+- **Tele-Consultation Service**: Node.js/Python (WebRTC signaling)
+- **Media Server**: Janus or Kurento (multi-party video)
+- **IoT Gateway**: Node.js (BLE communication, data processing)
+
+**Infrastructure**:
+- **CDN**: CloudFlare (video content delivery)
+- **WebRTC TURN/STUN**: Coturn server (NAT traversal)
+
+#### Data Flow
+
+```
+1. Patient arrives at kiosk
+   ↓
+2. Sahayak initiates consultation
+   ↓
+3. System creates video room (Media Server)
+   ↓
+4. Sahayak connects IoT devices (BLE)
+   ↓
+5. Patient, Sahayak, Doctor join video call
+   ↓
+6. Sahayak uploads vitals → IoT Gateway → Vitals Manager
+   ↓
+7. Vitals appear on Doctor's screen in real-time
+   ↓
+8. Consultation proceeds with low-bandwidth optimization
+   ↓
+9. Doctor can see vitals, patient, and Sahayak simultaneously
+```
+
+#### Key Architectural Decisions
+
+1. **Media Server Choice**: Janus/Kurento for multi-party support
+2. **Bandwidth Strategy**: Adaptive bitrate (240p-480p based on connection)
+3. **IoT Protocol**: BLE (Bluetooth Low Energy) for device communication
+4. **Real-time Sync**: WebSocket for vitals transmission
+5. **Offline Support**: Vitals cached locally, synced when online (R4)
+
+---
+
+### R2: AI-Powered Triage & Translation
+
+#### Architecture Components
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│          R2: AI TRIAGE & TRANSLATION ARCHITECTURE               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  ┌──────────────┐                                               │
+│  │  Patient     │                                               │
+│  │  (Voice/Text)│                                               │
+│  │  Local Dialect                                               │
+│  └──────┬───────┘                                               │
+│         │                                                        │
+│  ┌──────▼──────────────────────────────────────────────────────┐ │
+│  │         AI Triage & Translation Service                      │ │
+│  ├──────────────────────────────────────────────────────────────┤ │
+│  │                                                              │ │
+│  │  ┌────────────────────────────────────────────────────┐     │ │
+│  │  │  Translation Engine                                │     │ │
+│  │  │  • Language Detection (Auto)                        │     │ │
+│  │  │  • Speech-to-Text (if voice)                      │     │ │
+│  │  │  • Dialect → English Translation                  │     │ │
+│  │  │  • Text Normalization                             │     │ │
+│  │  └────────────────────────────────────────────────────┘     │ │
+│  │                                                              │ │
+│  │  ┌────────────────────────────────────────────────────┐     │ │
+│  │  │  Symptom Analyzer                                  │     │ │
+│  │  │  • Extract Medical Symptoms (LLM)                  │     │ │
+│  │  │  • Classify Conditions                             │     │ │
+│  │  │  • Generate Medical Summary                        │     │ │
+│  │  └────────────────────────────────────────────────────┘     │ │
+│  │                                                              │ │
+│  │  ┌────────────────────────────────────────────────────┐     │ │
+│  │  │  Triage Engine                                      │     │ │
+│  │  │  • Calculate Severity Score (1-10)                 │     │ │
+│  │  │  • Recommend Priority (LOW/MEDIUM/HIGH/CRITICAL)   │     │ │
+│  │  │  • Suggest Triage Action                           │     │ │
+│  │  └────────────────────────────────────────────────────┘     │ │
+│  │                                                              │ │
+│  │  ┌────────────────────────────────────────────────────┐     │ │
+│  │  │  LLM Service                                       │     │ │
+│  │  │  • GPT-4/Claude for Medical Summarization         │     │ │
+│  │  │  • Prompt Engineering for Accuracy                 │     │ │
+│  │  │  • Response Parsing                               │     │ │
+│  │  └────────────────────────────────────────────────────┘     │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+│                                                                   │
+│  ┌──────────────────────────────────────────────────────────────┐ │
+│  │  External Services                                            │ │
+│  │  • Speech-to-Text API (Google/AWS)                           │ │
+│  │  • Translation API (Custom Model/Google)                     │ │
+│  │  • LLM API (OpenAI/Anthropic)                               │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+│                                                                   │
+│  ┌──────────────────────────────────────────────────────────────┐ │
+│  │  Output:                                                       │ │
+│  │  • Translated English Medical Summary                         │ │
+│  │  • Extracted Symptoms                                         │ │
+│  │  • Severity Score (1-10)                                      │ │
+│  │  • Triage Priority                                             │ │
+│  │  → Sent to Doctor's Screen                                    │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Technology Stack
+
+**AI/ML Services**:
+- **Speech-to-Text**: Google Cloud Speech-to-Text / AWS Transcribe
+- **Translation**: Custom model (fine-tuned for medical terms) or Google Translate API
+- **LLM**: OpenAI GPT-4 / Anthropic Claude (for medical summarization)
+- **Severity Scoring**: Custom ML model (TensorFlow/PyTorch)
+
+**Backend**:
+- **AI Triage Service**: Python (FastAPI) - optimal for ML/AI workloads
+- **Translation Service**: Python (handles multiple language models)
+- **Caching**: Redis (cache translations for common symptoms)
+
+#### Processing Pipeline
+
+```
+Input: Patient Symptoms (Voice/Text in Local Dialect)
+    ↓
+[Step 1: Language Detection]
+    ↓
+[Step 2: Speech-to-Text] (if voice input)
+    ↓
+[Step 3: Translation to English]
+    ↓
+[Step 4: Medical Symptom Extraction] (LLM)
+    ↓
+[Step 5: Severity Classification] (ML Model)
+    ↓
+[Step 6: Medical Summary Generation] (LLM)
+    ↓
+[Step 7: Triage Priority Assignment]
+    ↓
+Output: Structured Medical Data
+    • Translated English Summary
+    • Extracted Symptoms
+    • Severity Score (1-10)
+    • Priority (LOW/MEDIUM/HIGH/CRITICAL)
+    → Sent to Doctor + Consultation Queue
+```
+
+#### Key Architectural Decisions
+
+1. **Hybrid Approach**: Custom models for common symptoms, LLM for complex cases
+2. **Caching Strategy**: Cache translations for common symptoms (reduce LLM calls)
+3. **Offline Support**: Basic translation works offline (R4), LLM requires online
+4. **Language Support**: 10+ Indian languages (Hindi, Telugu, Tamil, Bengali, etc.)
+5. **Accuracy Target**: >85% translation accuracy, >80% severity score accuracy
+
+---
+
+### R3: Prescription & Fulfillment Engine
+
+#### Architecture Components
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│          R3: PRESCRIPTION & FULFILLMENT ARCHITECTURE             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  ┌──────────────┐                                               │
+│  │  Doctor      │                                               │
+│  │  (Generates  │                                               │
+│  │  Prescription)                                               │
+│  └──────┬───────┘                                               │
+│         │                                                        │
+│  ┌──────▼──────────────────────────────────────────────────────┐ │
+│  │         Prescription & Fulfillment Service                   │ │
+│  ├──────────────────────────────────────────────────────────────┤ │
+│  │                                                              │ │
+│  │  ┌────────────────────────────────────────────────────┐     │ │
+│  │  │  Prescription Generator                            │     │ │
+│  │  │  • Create Digital Prescription                    │     │ │
+│  │  │  • Medicine Details (name, dosage, frequency)    │     │ │
+│  │  │  • Doctor Instructions                            │     │ │
+│  │  │  • Follow-up Date                                 │     │ │
+│  │  │  • Digital Signature (tamper-proof)               │     │ │
+│  │  └────────────────────────────────────────────────────┘     │ │
+│  │                                                              │ │
+│  │  ┌────────────────────────────────────────────────────┐     │ │
+│  │  │  Pharmacy Integration Layer                        │     │ │
+│  │  │  • Check Medicine Availability                     │     │ │
+│  │  │  • Get Pharmacy List (by location)               │     │ │
+│  │  │  • Place Order                                    │     │ │
+│  │  │  • Track Delivery                                 │     │ │
+│  │  └────────────────────────────────────────────────────┘     │ │
+│  │                                                              │ │
+│  │  ┌────────────────────────────────────────────────────┐     │ │
+│  │  │  Order Manager                                      │     │ │
+│  │  │  • Create Order                                     │     │ │
+│  │  │  • Update Status                                   │     │ │
+│  │  │  • Handle Cancellations                            │     │ │
+│  │  │  • Delivery Tracking                               │     │ │
+│  │  └────────────────────────────────────────────────────┘     │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+│                                                                   │
+│  ┌──────────────────────────────────────────────────────────────┐ │
+│  │  Pharmacy Partner APIs                                       │ │
+│  │  • Local Pharmacy APIs                                       │ │
+│  │  • Online Pharmacy APIs (1mg, Netmeds, etc.)                 │ │
+│  │  • Medicine Availability API                                │ │
+│  │  • Order Placement API                                       │ │
+│  │  • Delivery Tracking API                                     │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+│                                                                   │
+│  ┌──────────────────────────────────────────────────────────────┐ │
+│  │  Output:                                                     │ │
+│  │  • Digital Prescription (PDF)                                │ │
+│  │  • Medicine Order (if patient chooses)                      │ │
+│  │  • Order Tracking                                           │ │
+│  │  → Sent to Patient (SMS/WhatsApp/App)                       │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Technology Stack
+
+**Backend**:
+- **Prescription Service**: Node.js/Python (REST APIs)
+- **PDF Generation**: PDFKit / ReportLab (tamper-proof prescriptions)
+- **Digital Signature**: Cryptographic signing (RSA/ECDSA)
+
+**Integration**:
+- **Pharmacy APIs**: REST APIs (Adapter pattern for different pharmacy partners)
+- **Payment Gateway**: Razorpay/Stripe (for medicine payments)
+- **Notification Service**: SMS, WhatsApp, Push notifications
+
+**Database**:
+- **Prescription Storage**: PostgreSQL (structured data)
+- **Order Tracking**: MongoDB (flexible schema for order status)
+
+#### Data Flow
+
+```
+1. Doctor completes consultation
+   ↓
+2. Doctor generates prescription (Prescription Service)
+   ↓
+3. Prescription saved (with digital signature)
+   ↓
+4. Patient receives prescription (SMS/WhatsApp/App)
+   ↓
+5. Patient chooses to order medicines
+   ↓
+6. System checks availability (Pharmacy Integration)
+   ↓
+7. Patient selects pharmacy
+   ↓
+8. Order placed (Order Manager)
+   ↓
+9. Order tracked (Delivery Tracking)
+   ↓
+10. Medicine delivered to patient
+```
+
+#### Key Architectural Decisions
+
+1. **Adapter Pattern**: Different pharmacy APIs unified through adapters
+2. **Digital Signature**: Cryptographic signing ensures tamper-proof prescriptions
+3. **Offline Support**: Prescriptions generated offline, synced later (R4)
+4. **Consent Required**: Patient consent needed before sharing with pharmacy (R5)
+5. **Multiple Pharmacy Partners**: Support 3-5 pharmacy partners initially
+
+---
+
+### R4: Offline Sync & Storage (Foundation)
+
+#### Architecture Components
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│          R4: OFFLINE SYNC & STORAGE ARCHITECTURE                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  ┌──────────────────────────────────────────────────────────────┐ │
+│  │  Mobile Apps (Patient, Sahayak)                               │ │
+│  │  ┌────────────────────────────────────────────────────┐     │ │
+│  │  │  Local SQLite Database                             │     │ │
+│  │  │  • Patient Data                                    │     │ │
+│  │  │  • Consultations                                  │     │ │
+│  │  │  • Vitals                                         │     │ │
+│  │  │  • Prescriptions                                  │     │ │
+│  │  │  • Sync Queue                                    │     │ │
+│  │  └────────────────────────────────────────────────────┘     │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+│         │                                                          │
+│         │ (All writes go to local DB first)                        │
+│         │                                                          │
+│  ┌──────▼──────────────────────────────────────────────────────┐ │
+│  │         Offline Sync Service                                 │ │
+│  ├──────────────────────────────────────────────────────────────┤ │
+│  │                                                              │ │
+│  │  ┌────────────────────────────────────────────────────┐     │ │
+│  │  │  Sync Queue Manager                                │     │ │
+│  │  │  • Enqueue Operations (CREATE/UPDATE/DELETE)      │     │ │
+│  │  │  • Priority-based Sync                             │     │ │
+│  │  │  • Retry Failed Operations                        │     │ │
+│  │  └────────────────────────────────────────────────────┘     │ │
+│  │                                                              │ │
+│  │  ┌────────────────────────────────────────────────────┐     │ │
+│  │  │  Conflict Resolver                                  │     │ │
+│  │  │  • Detect Conflicts (timestamp/version)            │     │ │
+│  │  │  • Auto-resolve (last-write-wins)                  │     │ │
+│  │  │  • Flag for Manual Resolution                      │     │ │
+│  │  └────────────────────────────────────────────────────┘     │ │
+│  │                                                              │ │
+│  │  ┌────────────────────────────────────────────────────┐     │ │
+│  │  │  Background Sync Service                           │     │ │
+│  │  │  • Detect Connectivity                             │     │ │
+│  │  │  • Trigger Sync                                   │     │ │
+│  │  │  • Incremental Sync                               │     │ │
+│  │  │  • Status Tracking                                │     │ │
+│  │  └────────────────────────────────────────────────────┘     │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+│         │                                                          │
+│         │ (Sync when online)                                       │
+│         │                                                          │
+│  ┌──────▼──────────────────────────────────────────────────────┐ │
+│  │  Remote Database (PostgreSQL/MongoDB)                        │ │
+│  │  • Centralized Data Storage                                  │ │
+│  │  • Conflict Resolution                                       │ │
+│  │  • Data Integrity                                           │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Technology Stack
+
+**Mobile**:
+- **Local Database**: SQLite (React Native SQLite / Flutter sqflite)
+- **Sync Library**: Custom implementation or use libraries like WatermelonDB
+
+**Backend**:
+- **Sync Service**: Node.js/Python (handles sync requests)
+- **Remote Database**: PostgreSQL (structured data) / MongoDB (flexible)
+
+**Infrastructure**:
+- **Message Queue**: RabbitMQ/Kafka (for async sync operations)
+- **Cache**: Redis (sync status, conflict resolution)
+
+#### Sync Strategy
+
+**Store-and-Forward Pattern**:
+1. **Write Path**: All writes → Local SQLite → Queue for sync
+2. **Read Path**: Read from local cache → Fallback to server if online
+3. **Sync Trigger**: 
+   - On connectivity restore
+   - Periodic (every 5 minutes when online)
+   - Manual trigger
+4. **Conflict Resolution**:
+   - **Auto-resolve**: Last-write-wins (timestamp comparison)
+   - **Manual**: Flag critical conflicts for user review
+
+#### Key Architectural Decisions
+
+1. **Local-First**: All operations work offline, sync is secondary
+2. **Queue-Based**: Operations queued, synced in background
+3. **Conflict Strategy**: Automatic for 90% of cases, manual for critical
+4. **Incremental Sync**: Only sync changed data (efficient)
+5. **Priority-Based**: Critical data (prescriptions, vitals) synced first
+
+---
+
+### R5: Consent & Privacy (DPDP Act Compliance)
+
+#### Architecture Components
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│      R5: CONSENT & PRIVACY (DPDP ACT) ARCHITECTURE              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  ┌──────────────────────────────────────────────────────────────┐ │
+│  │  All Data Access Requests                                    │ │
+│  │  (Consultations, Vitals, Prescriptions, Records)              │ │
+│  └──────────────────┬───────────────────────────────────────────┘ │
+│                     │                                               │
+│  ┌──────────────────▼───────────────────────────────────────────┐ │
+│  │         Access Control Middleware                             │ │
+│  │  • Intercepts all requests                                    │ │
+│  │  • Checks RBAC permissions                                    │ │
+│  │  • Verifies consent                                           │ │
+│  │  • Enforces restrictions                                      │ │
+│  └──────────────────┬───────────────────────────────────────────┘ │
+│                     │                                               │
+│  ┌──────────────────▼───────────────────────────────────────────┐ │
+│  │         Consent & Privacy Service                             │ │
+│  ├──────────────────────────────────────────────────────────────┤ │
+│  │                                                              │ │
+│  │  ┌────────────────────────────────────────────────────┐     │ │
+│  │  │  RBAC Service                                       │     │ │
+│  │  │  • Role Definitions (PATIENT, SAHAYAK, DOCTOR, etc.)│     │ │
+│  │  │  • Permission Matrix                                 │     │ │
+│  │  │  • Access Control Checks                            │     │ │
+│  │  │  • Sahayak: Only Active Patient Data                │     │ │
+│  │  └────────────────────────────────────────────────────┘     │ │
+│  │                                                              │ │
+│  │  ┌────────────────────────────────────────────────────┐     │ │
+│  │  │  Consent Manager                                    │     │ │
+│  │  │  • Request Consent (OTP/Biometric)                  │     │ │
+│  │  │  • Verify Consent                                  │     │ │
+│  │  │  • Store Consent Records                           │     │ │
+│  │  │  • Revoke Consent                                  │     │ │
+│  │  │  • Consent Expiration                               │     │ │
+│  │  └────────────────────────────────────────────────────┘     │ │
+│  │                                                              │ │
+│  │  ┌────────────────────────────────────────────────────┐     │ │
+│  │  │  Encryption Service                                 │     │ │
+│  │  │  • Encrypt at Rest (AES-256)                       │     │ │
+│  │  │  • Encrypt in Transit (TLS 1.3)                     │     │ │
+│  │  │  • Key Management                                  │     │ │
+│  │  └────────────────────────────────────────────────────┘     │ │
+│  │                                                              │ │
+│  │  ┌────────────────────────────────────────────────────┐     │ │
+│  │  │  Audit Logger                                       │     │ │
+│  │  │  • Log All Access                                   │     │ │
+│  │  │  • Log Consent Actions                              │     │ │
+│  │  │  • Immutable Audit Trail                            │     │ │
+│  │  │  • Compliance Reports                               │     │ │
+│  │  └────────────────────────────────────────────────────┘     │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+│                                                                   │
+│  ┌──────────────────────────────────────────────────────────────┐ │
+│  │  Verification Services                                        │ │
+│  │  • OTP Service (SMS)                                         │ │
+│  │  • Biometric Service (Fingerprint/Face)                      │ │
+│  │  • Signature Service (Digital Signature)                     │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+│                                                                   │
+│  ┌──────────────────────────────────────────────────────────────┐ │
+│  │  Output:                                                     │ │
+│  │  • Access Granted/Denied                                     │ │
+│  │  • Audit Log Entry                                           │ │
+│  │  • Encrypted Data (if access granted)                        │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Technology Stack
+
+**Backend**:
+- **Consent Service**: Node.js/Python (RBAC, consent management)
+- **Encryption**: AES-256 (at rest), TLS 1.3 (in transit)
+- **Key Management**: AWS KMS / HashiCorp Vault
+
+**Authentication**:
+- **OTP Service**: Twilio / AWS SNS (SMS OTP)
+- **Biometric**: Device-native APIs (TouchID, FaceID, Android Biometric)
+
+**Database**:
+- **Consent Records**: PostgreSQL (immutable consent logs)
+- **Audit Logs**: Time-series database (InfluxDB) or PostgreSQL
+
+#### Access Control Flow
+
+```
+Data Access Request
+    ↓
+[Access Control Middleware]
+    ↓
+[Check User Role] (RBAC)
+    ↓
+[Check Resource Permissions]
+    ↓
+[Check Consent] (if required)
+    ↓
+[Check Conditions]
+    • Sahayak: Only active patient data?
+    • Doctor: Assigned to this patient?
+    • Consent: Valid and not expired?
+    ↓
+[Log Access] (Audit Logger)
+    ↓
+[Encrypt Data] (if sensitive)
+    ↓
+Grant/Deny Access
+```
+
+#### Key Architectural Decisions
+
+1. **Middleware Pattern**: Access control at API gateway level
+2. **RBAC Model**: Role-based with fine-grained permissions
+3. **Consent Storage**: Immutable consent records (cannot be deleted)
+4. **Encryption**: End-to-end encryption for sensitive data
+5. **Audit Trail**: All access logged, cannot be modified
+6. **DPDP Compliance**: Right to be forgotten, data portability, consent management
+
+---
+
+### Integrated Architecture: All 5 Requirements
+
+#### Complete System Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    COMPLETE SYSTEM FLOW                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  1. Patient arrives at kiosk                                     │
+│     ↓                                                             │
+│  2. Sahayak registers patient (R5: Consent requested)           │
+│     ↓                                                             │
+│  3. Patient describes symptoms (local dialect)                   │
+│     ↓                                                             │
+│  4. R2: AI Triage & Translation                                  │
+│     • Detects language                                            │
+│     • Translates to English                                       │
+│     • Generates medical summary                                   │
+│     • Calculates severity score                                   │
+│     ↓                                                             │
+│  5. Consultation created (R4: Stored locally)                    │
+│     ↓                                                             │
+│  6. R1: Tele-Consultation starts                                 │
+│     • Video room created                                         │
+│     • Patient, Sahayak, Doctor join                              │
+│     • Sahayak uploads vitals (IoT devices)                       │
+│     • Vitals appear on doctor's screen                           │
+│     ↓                                                             │
+│  7. Doctor sees:                                                  │
+│     • Translated symptoms (R2)                                    │
+│     • Real-time vitals (R1)                                       │
+│     • Patient video                                              │
+│     ↓                                                             │
+│  8. Doctor generates prescription                                │
+│     ↓                                                             │
+│  9. R3: Prescription & Fulfillment                               │
+│     • Digital prescription created                               │
+│     • Pharmacy availability checked                              │
+│     • Patient can order medicines                                │
+│     ↓                                                             │
+│  10. All data synced (R4: Offline Sync)                          │
+│      • Local data → Remote database                              │
+│      • Conflicts resolved                                         │
+│     ↓                                                             │
+│  11. R5: Access logged (Audit Trail)                             │
+│      • All access logged for compliance                          │
+│                                                                   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Technology Stack Summary
+
+**Frontend**:
+- React Native (Patient, Sahayak apps - offline-capable)
+- React/Web (Doctor app - WebRTC support)
+
+**Backend Services**:
+- Node.js/Python microservices
+- API Gateway (Kong/AWS API Gateway)
+- Message Queue (Kafka/RabbitMQ)
+
+**Databases**:
+- PostgreSQL (primary data)
+- MongoDB (flexible schemas)
+- SQLite (local mobile storage)
+- Redis (cache, sync status)
+
+**External Services**:
+- WebRTC Media Server (Janus/Kurento)
+- LLM APIs (OpenAI/Anthropic)
+- Speech-to-Text (Google/AWS)
+- Translation APIs
+- Pharmacy APIs
+- OTP Service (SMS)
+
+**Infrastructure**:
+- Docker containers
+- Kubernetes orchestration
+- CDN (CloudFlare)
+- Monitoring (Prometheus + Grafana)
+
+---
+
+### Architecture Validation
+
+#### Requirement Coverage Checklist
+
+- [x] **R1: Tele-Consultation**
+  - [x] Low-bandwidth video (256 Kbps)
+  - [x] Multi-party calls (Patient, Sahayak, Doctor)
+  - [x] IoT device integration (BP Monitor, Oximeter)
+  - [x] Real-time vitals on doctor's screen
+
+- [x] **R2: AI Triage & Translation**
+  - [x] Voice/text input in local dialect
+  - [x] Language detection
+  - [x] Translation to English
+  - [x] Medical summary generation
+  - [x] Severity scoring (1-10)
+  - [x] Triage priority
+
+- [x] **R3: Prescription & Fulfillment**
+  - [x] Digital prescription generation
+  - [x] Pharmacy integration
+  - [x] Medicine availability check
+  - [x] Order management
+  - [x] Delivery tracking
+
+- [x] **R4: Offline Sync & Storage**
+  - [x] Local SQLite storage
+  - [x] Store-and-forward pattern
+  - [x] Automatic sync when online
+  - [x] Conflict resolution
+
+- [x] **R5: Consent & Privacy**
+  - [x] RBAC implementation
+  - [x] Sahayak restrictions (active patients only)
+  - [x] Consent management (OTP/Biometric)
+  - [x] Audit logging
+  - [x] DPDP Act compliance
 
 ---
 

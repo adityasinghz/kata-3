@@ -1,6 +1,6 @@
-# GramSeva Health - Architecture Documentation
+# FlashKart Quick Commerce - Architecture Documentation
 
-> **⚠️ Core Requirements**: This architecture is designed around 5 critical requirements. See [KEY_REQUIREMENTS.md](./KEY_REQUIREMENTS.md) for the complete reference.
+> **⚠️ Core Requirements**: This architecture is designed around 9 critical requirements. See [KEY_REQUIREMENTS.md](./KEY_REQUIREMENTS.md) for the complete reference.
 
 ## Table of Contents
 1. [High-Level Design (HLD)](#high-level-design-hld)
@@ -19,16 +19,16 @@
 
 ### System Overview
 
-GramSeva Health is a **rural telemedicine platform** designed to bridge the healthcare gap in Tier-2/3 cities and villages through an assisted kiosk model with offline-first capabilities.
+FlashKart is a **cloud-native quick commerce platform** designed to deliver groceries, daily essentials, and snacks within 10-20 minutes through a network of dark stores (micro-fulfillment centers) and dynamic delivery partner assignment.
 
 ### Architecture Principles
 
-1. **Offline-First Architecture**: Store-and-forward pattern for unreliable connectivity
-2. **Low-Bandwidth Optimization**: Video compression, adaptive streaming, data prioritization
-3. **Assisted Model**: Sahayak (health worker) as intermediary between patient and doctor
-4. **Privacy & Compliance**: DPDP Act compliance with role-based access control
-5. **Scalability**: Microservices architecture for horizontal scaling
-6. **Resilience**: Circuit breakers, retry mechanisms, graceful degradation
+1. **Cloud-Native**: Microservices architecture on Kubernetes for scalability
+2. **Event-Driven**: Asynchronous processing for order fulfillment and inventory sync
+3. **Real-Time**: Live inventory, tracking, and partner assignment
+4. **Resilient**: Circuit breakers, retry mechanisms, graceful degradation
+5. **Scalable**: Horizontal scaling to handle peak traffic and city expansion
+6. **Observable**: Comprehensive monitoring, logging, and tracing
 
 ### System Architecture Diagram
 
@@ -37,8 +37,9 @@ GramSeva Health is a **rural telemedicine platform** designed to bridge the heal
 │                        Client Layer                              │
 ├─────────────────────────────────────────────────────────────────┤
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
-│  │ Kiosk App    │  │ Sahayak App  │  │ Doctor App   │         │
-│  │ (Patient UI) │  │ (Assisted)   │  │ (Desktop)    │         │
+│  │ Customer App │  │ Dark Store   │  │ Delivery     │         │
+│  │ (Mobile/Web) │  │ Operations   │  │ Partner App  │         │
+│  │              │  │ (Tablet/Web) │  │ (Mobile)     │         │
 │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘         │
 │         │                  │                  │                  │
 └─────────┼──────────────────┼──────────────────┼─────────────────┘
@@ -48,26 +49,27 @@ GramSeva Health is a **rural telemedicine platform** designed to bridge the heal
 │         │                  │                  │                  │
 │  ┌──────▼──────────────────▼──────────────────▼──────┐         │
 │  │           API Gateway / Load Balancer              │         │
-│  │         (Authentication, Rate Limiting)            │         │
+│  │    (Authentication, Rate Limiting, Routing)       │         │
 │  └──────┬──────────────────┬──────────────────┬──────┘         │
 │         │                  │                  │                  │
 │  ┌──────▼──────────────────▼──────────────────▼──────┐         │
 │  │              Microservices Layer                   │         │
 │  ├───────────────────────────────────────────────────┤         │
 │  │ ┌────────────┐ ┌────────────┐ ┌────────────┐    │         │
-│  │ │ Tele-      │ │ AI Triage  │ │ Prescription│   │         │
-│  │ │ Consultation│ │ & Translation│ │ & Fulfillment│ │         │
+│  │ │ Location   │ │ Catalog    │ │ Inventory  │    │         │
 │  │ │ Service    │ │ Service    │ │ Service    │    │         │
 │  │ └────────────┘ └────────────┘ └────────────┘    │         │
 │  │ ┌────────────┐ ┌────────────┐ ┌────────────┐    │         │
-│  │ │ Patient    │ │ Consent    │ │ Offline    │    │         │
-│  │ │ Management │ │ & Privacy  │ │ Sync       │    │         │
+│  │ │ Order      │ │ Fulfillment│ │ Delivery   │    │         │
 │  │ │ Service    │ │ Service    │ │ Service    │    │         │
 │  │ └────────────┘ └────────────┘ └────────────┘    │         │
 │  │ ┌────────────┐ ┌────────────┐ ┌────────────┐    │         │
-│  │ │ Visual     │ │ Govt       │ │ WhatsApp   │    │         │
-│  │ │ Diagnosis  │ │ Scheme     │ │ Bot        │    │         │
-│  │ │ Service    │ │ Integration│ │ Service    │    │         │
+│  │ │ Payment    │ │ Partner    │ │ Tracking   │    │         │
+│  │ │ Service    │ │ Management │ │ Service    │    │         │
+│  │ └────────────┘ └────────────┘ └────────────┘    │         │
+│  │ ┌────────────┐ ┌────────────┐ ┌────────────┐    │         │
+│  │ │ Notification│ │ Pricing   │ │ Analytics  │    │         │
+│  │ │ Service    │ │ Service    │ │ Service    │    │         │
 │  │ └────────────┘ └────────────┘ └────────────┘    │         │
 │  └──────┬──────────────────┬──────────────────┬──────┘         │
 │         │                  │                  │                  │
@@ -80,9 +82,9 @@ GramSeva Health is a **rural telemedicine platform** designed to bridge the heal
 │  │              Data Layer                            │         │
 │  ├───────────────────────────────────────────────────┤         │
 │  │ ┌────────────┐ ┌────────────┐ ┌────────────┐    │         │
-│  │ │ Primary    │ │ Offline    │ │ Cache      │    │         │
-│  │ │ Database   │ │ Local DB   │ │ (Redis)    │    │         │
-│  │ │ (PostgreSQL│ │ (SQLite)   │ │            │    │         │
+│  │ │ Primary    │ │ Cache      │ │ Search     │    │         │
+│  │ │ Database   │ │ (Redis)    │ │ (Elasticsearch)│ │         │
+│  │ │ (PostgreSQL│ │            │ │            │    │         │
 │  │ │ /MongoDB)  │ │            │ │            │    │         │
 │  │ └────────────┘ └────────────┘ └────────────┘    │         │
 │  └───────────────────────────────────────────────────┘         │
@@ -91,1270 +93,532 @@ GramSeva Health is a **rural telemedicine platform** designed to bridge the heal
 │  │         External Services Integration              │         │
 │  ├───────────────────────────────────────────────────┤         │
 │  │ ┌────────────┐ ┌────────────┐ ┌────────────┐    │         │
-│  │ │ Ayushman   │ │ Pharmacy   │ │ IoT Device │    │         │
-│  │ │ Bharat API │ │ Supply API │ │ Gateway    │    │         │
+│  │ │ Payment    │ │ Maps API   │ │ SMS/Push   │    │         │
+│  │ │ Gateways   │ │ (Google)   │ │ Services   │    │         │
 │  │ └────────────┘ └────────────┘ └────────────┘    │         │
-│  └───────────────────────────────────────────────────┘         │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ### Key Components
 
-#### 1. **Kiosk Application (Patient Interface)**
-- **Purpose**: Patient-facing interface at kiosk locations
-- **Technology**: React Native / Flutter (offline-capable)
+#### 1. **Customer Application (Mobile/Web)**
+- **Purpose**: Customer-facing interface for ordering
+- **Technology**: React Native / Flutter (Mobile), React (Web)
 - **Features**: 
-  - Patient registration/login
-  - Symptom input (voice/text in local dialect)
-  - Video consultation interface
-  - Prescription viewing
-  - Appointment scheduling
+  - Location-based product discovery
+  - Real-time inventory visibility
+  - Fast checkout (minimal steps)
+  - Order tracking with live updates
+  - Payment integration
+  - Order history
 
-#### 2. **Sahayak Application (Health Worker Interface)**
-- **Purpose**: Assisted interface for health workers
+#### 2. **Dark Store Operations Interface (Tablet/Web)**
+- **Purpose**: Dark store staff interface for order fulfillment
+- **Technology**: React (Web), React Native (Tablet)
+- **Features**:
+  - Order queue management
+  - Pick & pack workflows
+  - Inventory updates
+  - Order status updates
+  - Barcode scanning
+
+#### 3. **Delivery Partner Application (Mobile)**
+- **Purpose**: Delivery partner interface for order delivery
 - **Technology**: React Native / Flutter
 - **Features**:
-  - Patient onboarding
-  - IoT device integration (BP monitor, Oximeter)
-  - Vitals upload
-  - Consultation assistance
-  - Offline data capture
+  - Order assignment notifications
+  - Route navigation
+  - Order pickup confirmation
+  - Delivery confirmation
+  - Earnings tracking
 
-#### 3. **Doctor Application (Desktop/Web)**
-- **Purpose**: Doctor-facing consultation interface
-- **Technology**: React / Angular (WebRTC for video)
+#### 4. **Location Service**
+- **Purpose**: Location-aware store selection and routing
+- **Technology**: Node.js / Java / Go
 - **Features**:
-  - Patient queue management
-  - Video consultation
-  - AI-translated symptom summaries
-  - Prescription generation
-  - Patient history viewing
+  - GPS location detection
+  - Geofencing for dark stores
+  - Store proximity calculation
+  - Delivery radius validation
+  - Multi-city support
 
-#### 4. **Tele-Consultation Service**
-- **Purpose**: Video consultation orchestration
-- **Technology**: WebRTC, Janus/Kurento media server
+#### 5. **Catalog Service**
+- **Purpose**: Product catalog management
+- **Technology**: Node.js / Java
 - **Features**:
-  - Low-bandwidth video optimization
-  - Multi-party video (Patient, Sahayak, Doctor)
-  - Screen sharing
-  - Recording (with consent)
+  - Product CRUD operations
+  - Category management
+  - Search and filtering
+  - Product recommendations
+  - Multi-city catalog support
 
-#### 5. **AI Triage & Translation Service**
-- **Purpose**: Symptom analysis and translation
-- **Technology**: LLM (GPT-4/Claude), Speech-to-Text, Translation APIs
+#### 6. **Inventory Service**
+- **Purpose**: Real-time inventory management per dark store
+- **Technology**: Node.js / Java / Go
 - **Features**:
-  - Dialect-to-English translation
-  - Medical symptom summarization
-  - Severity scoring
-  - Triage recommendations
+  - Real-time inventory sync
+  - Inventory reservation (prevent overselling)
+  - Low stock alerts
+  - Inventory reconciliation
+  - Multi-channel sync
 
-#### 6. **Prescription & Fulfillment Service**
-- **Purpose**: Prescription management and pharmacy integration
-- **Technology**: REST APIs, Pharmacy partner APIs
+#### 7. **Order Service**
+- **Purpose**: Order lifecycle management
+- **Technology**: Node.js / Java
 - **Features**:
-  - Digital prescription generation
-  - Medicine availability check
-  - Order placement
-  - Delivery tracking
+  - Order creation
+  - Order state management
+  - Order cancellation
+  - Order history
+  - Order search
 
-#### 7. **Offline Sync Service**
-- **Purpose**: Store-and-forward data synchronization
-- **Technology**: Background sync, Conflict resolution
+#### 8. **Fulfillment Service**
+- **Purpose**: Intelligent order fulfillment and store assignment
+- **Technology**: Node.js / Java / Python (ML models)
 - **Features**:
-  - Local data caching
-  - Conflict detection and resolution
-  - Incremental sync
-  - Sync status tracking
+  - Store selection algorithm
+  - Fulfillment capacity management
+  - SLA tracking
+  - Order routing
+  - Peak load handling
 
-#### 8. **Consent & Privacy Service**
-- **Purpose**: DPDP Act compliance and access control
-- **Technology**: OAuth 2.0, RBAC, Encryption
+#### 9. **Delivery Service**
+- **Purpose**: Delivery partner assignment and management
+- **Technology**: Node.js / Java / Python (ML models)
 - **Features**:
-  - Role-based access control
-  - Consent management (OTP/Biometric)
-  - Data encryption at rest and in transit
-  - Audit logging
+  - Partner onboarding
+  - Real-time availability tracking
+  - Dynamic assignment algorithm
+  - Route optimization
+  - Re-assignment logic
 
-#### 9. **Visual Diagnosis Service**
-- **Purpose**: Computer vision for skin conditions/wounds
-- **Technology**: TensorFlow/PyTorch, Image processing
+#### 10. **Payment Service**
+- **Purpose**: Payment processing and refund management
+- **Technology**: Node.js / Java
 - **Features**:
-  - Image upload and analysis
-  - Condition classification
-  - Severity assessment
-  - Report generation
+  - Multiple payment modes (UPI, Cards, Wallets, COD)
+  - Payment gateway integration
+  - Refund processing
+  - Transaction history
+  - Payment security (PCI-DSS)
 
-#### 10. **Government Scheme Integration Service**
-- **Purpose**: Ayushman Bharat integration
-- **Technology**: REST APIs, ABHA ID verification
+#### 11. **Partner Management Service**
+- **Purpose**: Delivery partner lifecycle management
+- **Technology**: Node.js / Java
 - **Features**:
-  - ABHA ID validation
-  - Insurance eligibility check
-  - Health record fetching
-  - Scheme benefit verification
+  - Partner registration
+  - Verification and onboarding
+  - Performance tracking
+  - Earnings management
+  - Partner ratings
 
-#### 11. **WhatsApp Bot Service**
-- **Purpose**: Follow-up reminders and communication
-- **Technology**: WhatsApp Business API, NLP
+#### 12. **Tracking Service**
+- **Purpose**: Real-time order and delivery tracking
+- **Technology**: Node.js / Java
 - **Features**:
-  - Medication reminders (vernacular)
-  - Appointment scheduling
-  - Follow-up queries
-  - Health tips
+  - Order status tracking
+  - ETA calculation
+  - Live location tracking
+  - Delivery progress updates
+  - WebSocket for real-time updates
+
+#### 13. **Notification Service**
+- **Purpose**: Multi-channel customer communication
+- **Technology**: Node.js / Java
+- **Features**:
+  - SMS notifications
+  - Push notifications
+  - Email notifications
+  - In-app notifications
+  - Notification templates
+
+#### 14. **Pricing Service**
+- **Purpose**: Dynamic pricing and promotions
+- **Technology**: Node.js / Java
+- **Features**:
+  - Dynamic pricing rules
+  - Surge pricing
+  - Promotional pricing
+  - Discount management
+  - Price history
+
+#### 15. **Analytics Service**
+- **Purpose**: Business intelligence and reporting
+- **Technology**: Python / Java
+- **Features**:
+  - Order analytics
+  - Inventory analytics
+  - Delivery performance
+  - Revenue analytics
+  - Customer insights
 
 ---
 
 ## Requirements-Driven Architecture
 
-> This section presents the architecture **specifically designed to fulfill the 5 core requirements**. Each requirement is mapped to its architectural components, data flows, and technology stack.
-
-### Architecture Overview: 5 Core Requirements
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    REQUIREMENT-DRIVEN ARCHITECTURE                        │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  R1: Assisted Tele-Consultation    R2: AI Triage & Translation           │
-│  ┌──────────────────────────┐    ┌──────────────────────────┐          │
-│  │ • WebRTC Media Server    │    │ • LLM Service            │          │
-│  │ • IoT Device Gateway      │    │ • Speech-to-Text         │          │
-│  │ • Vitals Manager         │    │ • Translation Engine     │          │
-│  │ • Bandwidth Optimizer    │    │ • Severity Scorer        │          │
-│  └──────────────────────────┘    └──────────────────────────┘          │
-│           │                                    │                          │
-│           └────────────┬───────────────────────┘                          │
-│                        │                                                    │
-│  R3: Prescription & Fulfillment                                            │
-│  ┌──────────────────────────┐                                            │
-│  │ • Prescription Service   │                                            │
-│  │ • Pharmacy Integration   │                                            │
-│  │ • Order Manager          │                                            │
-│  └──────────────────────────┘                                            │
-│           │                                                                │
-│           │                                                                │
-│  ┌────────▼──────────────────────────────────────────┐                   │
-│  │         FOUNDATION LAYER                          │                   │
-│  ├──────────────────────────────────────────────────┤                   │
-│  │  R4: Offline Sync & Storage                       │                   │
-│  │  ┌──────────────────────────────────────────┐    │                   │
-│  │  │ • Local SQLite DB                        │    │                   │
-│  │  │ • Sync Queue Manager                     │    │                   │
-│  │  │ • Conflict Resolver                      │    │                   │
-│  │  │ • Background Sync Service               │    │                   │
-│  │  └──────────────────────────────────────────┘    │                   │
-│  │                                                   │                   │
-│  │  R5: Consent & Privacy (DPDP Act)                │                   │
-│  │  ┌──────────────────────────────────────────┐    │                   │
-│  │  │ • RBAC Service                           │    │                   │
-│  │  │ • Consent Manager                       │    │                   │
-│  │  │ • Access Control Middleware              │    │                   │
-│  │  │ • Audit Logger                          │    │                   │
-│  │  │ • Encryption Service                    │    │                   │
-│  │  └──────────────────────────────────────────┘    │                   │
-│  └──────────────────────────────────────────────────┘                   │
-│                                                                           │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
-### R1: Assisted Tele-Consultation Platform
-
-#### Architecture Components
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│              R1: TELE-CONSULTATION ARCHITECTURE                 │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│  ┌──────────────┐         ┌──────────────┐         ┌──────────┐ │
-│  │  Patient App  │         │ Sahayak App  │         │Doctor App│ │
-│  │  (Kiosk)      │         │  (Mobile)    │         │ (Desktop)│ │
-│  └──────┬───────┘         └──────┬───────┘         └────┬─────┘ │
-│         │                         │                       │       │
-│         │ Video Stream            │ Vitals Upload         │       │
-│         │ (Low Bandwidth)         │ (IoT Devices)          │       │
-│         │                         │                       │       │
-│  ┌──────▼─────────────────────────▼───────────────────────▼─────┐ │
-│  │              Tele-Consultation Service                        │ │
-│  ├──────────────────────────────────────────────────────────────┤ │
-│  │  ┌──────────────────┐  ┌──────────────────┐                │ │
-│  │  │  Media Manager    │  │  Vitals Manager  │                │ │
-│  │  │  • WebRTC Setup  │  │  • IoT Gateway   │                │ │
-│  │  │  • Bandwidth Opt │  │  • Real-time Sync│                │ │
-│  │  │  • Quality Adapt │  │  • Data Format   │                │ │
-│  │  └──────────────────┘  └──────────────────┘                │ │
-│  │                                                              │ │
-│  │  ┌──────────────────┐  ┌──────────────────┐                │ │
-│  │  │  Room Manager    │  │  Queue Manager   │                │ │
-│  │  │  • Create Room   │  │  • Prioritize    │                │ │
-│  │  │  • Join Room    │  │  • Assign Doctor  │                │ │
-│  │  │  • Manage Users  │  │  • Notify        │                │ │
-│  │  └──────────────────┘  └──────────────────┘                │ │
-│  └──────────────────────────────────────────────────────────────┘ │
-│                                                                   │
-│  ┌──────────────────────────────────────────────────────────────┐ │
-│  │           Media Server (Janus/Kurento)                        │ │
-│  │  • Multi-party video routing                                   │ │
-│  │  • Adaptive bitrate streaming                                  │ │
-│  │  • Low-bandwidth optimization (256 Kbps min)                   │ │
-│  └──────────────────────────────────────────────────────────────┘ │
-│                                                                   │
-│  ┌──────────────────────────────────────────────────────────────┐ │
-│  │           IoT Device Gateway                                  │ │
-│  │  • BLE Connection (BP Monitor, Oximeter)                       │ │
-│  │  • Data Validation                                            │ │
-│  │  • Real-time Transmission to Doctor Screen                    │ │
-│  └──────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-#### Technology Stack
-
-**Frontend**:
-- **Patient App**: React Native (offline-capable, video support)
-- **Sahayak App**: React Native (BLE for IoT, video, vitals upload)
-- **Doctor App**: React/Web (WebRTC, real-time vitals display)
-
-**Backend**:
-- **Tele-Consultation Service**: Node.js/Python (WebRTC signaling)
-- **Media Server**: Janus or Kurento (multi-party video)
-- **IoT Gateway**: Node.js (BLE communication, data processing)
-
-**Infrastructure**:
-- **CDN**: CloudFlare (video content delivery)
-- **WebRTC TURN/STUN**: Coturn server (NAT traversal)
-
-#### Data Flow
-
-```
-1. Patient arrives at kiosk
-   ↓
-2. Sahayak initiates consultation
-   ↓
-3. System creates video room (Media Server)
-   ↓
-4. Sahayak connects IoT devices (BLE)
-   ↓
-5. Patient, Sahayak, Doctor join video call
-   ↓
-6. Sahayak uploads vitals → IoT Gateway → Vitals Manager
-   ↓
-7. Vitals appear on Doctor's screen in real-time
-   ↓
-8. Consultation proceeds with low-bandwidth optimization
-   ↓
-9. Doctor can see vitals, patient, and Sahayak simultaneously
-```
-
-#### Key Architectural Decisions
-
-1. **Media Server Choice**: Janus/Kurento for multi-party support
-2. **Bandwidth Strategy**: Adaptive bitrate (240p-480p based on connection)
-3. **IoT Protocol**: BLE (Bluetooth Low Energy) for device communication
-4. **Real-time Sync**: WebSocket for vitals transmission
-5. **Offline Support**: Vitals cached locally, synced when online (R4)
-
----
-
-### R2: AI-Powered Triage & Translation
-
-#### Architecture Components
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│          R2: AI TRIAGE & TRANSLATION ARCHITECTURE               │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│  ┌──────────────┐                                               │
-│  │  Patient     │                                               │
-│  │  (Voice/Text)│                                               │
-│  │  Local Dialect                                               │
-│  └──────┬───────┘                                               │
-│         │                                                        │
-│  ┌──────▼──────────────────────────────────────────────────────┐ │
-│  │         AI Triage & Translation Service                      │ │
-│  ├──────────────────────────────────────────────────────────────┤ │
-│  │                                                              │ │
-│  │  ┌────────────────────────────────────────────────────┐     │ │
-│  │  │  Translation Engine                                │     │ │
-│  │  │  • Language Detection (Auto)                        │     │ │
-│  │  │  • Speech-to-Text (if voice)                      │     │ │
-│  │  │  • Dialect → English Translation                  │     │ │
-│  │  │  • Text Normalization                             │     │ │
-│  │  └────────────────────────────────────────────────────┘     │ │
-│  │                                                              │ │
-│  │  ┌────────────────────────────────────────────────────┐     │ │
-│  │  │  Symptom Analyzer                                  │     │ │
-│  │  │  • Extract Medical Symptoms (LLM)                  │     │ │
-│  │  │  • Classify Conditions                             │     │ │
-│  │  │  • Generate Medical Summary                        │     │ │
-│  │  └────────────────────────────────────────────────────┘     │ │
-│  │                                                              │ │
-│  │  ┌────────────────────────────────────────────────────┐     │ │
-│  │  │  Triage Engine                                      │     │ │
-│  │  │  • Calculate Severity Score (1-10)                 │     │ │
-│  │  │  • Recommend Priority (LOW/MEDIUM/HIGH/CRITICAL)   │     │ │
-│  │  │  • Suggest Triage Action                           │     │ │
-│  │  └────────────────────────────────────────────────────┘     │ │
-│  │                                                              │ │
-│  │  ┌────────────────────────────────────────────────────┐     │ │
-│  │  │  LLM Service                                       │     │ │
-│  │  │  • GPT-4/Claude for Medical Summarization         │     │ │
-│  │  │  • Prompt Engineering for Accuracy                 │     │ │
-│  │  │  • Response Parsing                               │     │ │
-│  │  └────────────────────────────────────────────────────┘     │ │
-│  └──────────────────────────────────────────────────────────────┘ │
-│                                                                   │
-│  ┌──────────────────────────────────────────────────────────────┐ │
-│  │  External Services                                            │ │
-│  │  • Speech-to-Text API (Google/AWS)                           │ │
-│  │  • Translation API (Custom Model/Google)                     │ │
-│  │  • LLM API (OpenAI/Anthropic)                               │ │
-│  └──────────────────────────────────────────────────────────────┘ │
-│                                                                   │
-│  ┌──────────────────────────────────────────────────────────────┐ │
-│  │  Output:                                                       │ │
-│  │  • Translated English Medical Summary                         │ │
-│  │  • Extracted Symptoms                                         │ │
-│  │  • Severity Score (1-10)                                      │ │
-│  │  • Triage Priority                                             │ │
-│  │  → Sent to Doctor's Screen                                    │ │
-│  └──────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-#### Technology Stack
-
-**AI/ML Services**:
-- **Speech-to-Text**: Google Cloud Speech-to-Text / AWS Transcribe
-- **Translation**: Custom model (fine-tuned for medical terms) or Google Translate API
-- **LLM**: OpenAI GPT-4 / Anthropic Claude (for medical summarization)
-- **Severity Scoring**: Custom ML model (TensorFlow/PyTorch)
-
-**Backend**:
-- **AI Triage Service**: Python (FastAPI) - optimal for ML/AI workloads
-- **Translation Service**: Python (handles multiple language models)
-- **Caching**: Redis (cache translations for common symptoms)
-
-#### Processing Pipeline
-
-```
-Input: Patient Symptoms (Voice/Text in Local Dialect)
-    ↓
-[Step 1: Language Detection]
-    ↓
-[Step 2: Speech-to-Text] (if voice input)
-    ↓
-[Step 3: Translation to English]
-    ↓
-[Step 4: Medical Symptom Extraction] (LLM)
-    ↓
-[Step 5: Severity Classification] (ML Model)
-    ↓
-[Step 6: Medical Summary Generation] (LLM)
-    ↓
-[Step 7: Triage Priority Assignment]
-    ↓
-Output: Structured Medical Data
-    • Translated English Summary
-    • Extracted Symptoms
-    • Severity Score (1-10)
-    • Priority (LOW/MEDIUM/HIGH/CRITICAL)
-    → Sent to Doctor + Consultation Queue
-```
-
-#### Key Architectural Decisions
-
-1. **Hybrid Approach**: Custom models for common symptoms, LLM for complex cases
-2. **Caching Strategy**: Cache translations for common symptoms (reduce LLM calls)
-3. **Offline Support**: Basic translation works offline (R4), LLM requires online
-4. **Language Support**: 10+ Indian languages (Hindi, Telugu, Tamil, Bengali, etc.)
-5. **Accuracy Target**: >85% translation accuracy, >80% severity score accuracy
-
----
-
-### R3: Prescription & Fulfillment Engine
-
-#### Architecture Components
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│          R3: PRESCRIPTION & FULFILLMENT ARCHITECTURE             │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│  ┌──────────────┐                                               │
-│  │  Doctor      │                                               │
-│  │  (Generates  │                                               │
-│  │  Prescription)                                               │
-│  └──────┬───────┘                                               │
-│         │                                                        │
-│  ┌──────▼──────────────────────────────────────────────────────┐ │
-│  │         Prescription & Fulfillment Service                   │ │
-│  ├──────────────────────────────────────────────────────────────┤ │
-│  │                                                              │ │
-│  │  ┌────────────────────────────────────────────────────┐     │ │
-│  │  │  Prescription Generator                            │     │ │
-│  │  │  • Create Digital Prescription                    │     │ │
-│  │  │  • Medicine Details (name, dosage, frequency)    │     │ │
-│  │  │  • Doctor Instructions                            │     │ │
-│  │  │  • Follow-up Date                                 │     │ │
-│  │  │  • Digital Signature (tamper-proof)               │     │ │
-│  │  └────────────────────────────────────────────────────┘     │ │
-│  │                                                              │ │
-│  │  ┌────────────────────────────────────────────────────┐     │ │
-│  │  │  Pharmacy Integration Layer                        │     │ │
-│  │  │  • Check Medicine Availability                     │     │ │
-│  │  │  • Get Pharmacy List (by location)               │     │ │
-│  │  │  • Place Order                                    │     │ │
-│  │  │  • Track Delivery                                 │     │ │
-│  │  └────────────────────────────────────────────────────┘     │ │
-│  │                                                              │ │
-│  │  ┌────────────────────────────────────────────────────┐     │ │
-│  │  │  Order Manager                                      │     │ │
-│  │  │  • Create Order                                     │     │ │
-│  │  │  • Update Status                                   │     │ │
-│  │  │  • Handle Cancellations                            │     │ │
-│  │  │  • Delivery Tracking                               │     │ │
-│  │  └────────────────────────────────────────────────────┘     │ │
-│  └──────────────────────────────────────────────────────────────┘ │
-│                                                                   │
-│  ┌──────────────────────────────────────────────────────────────┐ │
-│  │  Pharmacy Partner APIs                                       │ │
-│  │  • Local Pharmacy APIs                                       │ │
-│  │  • Online Pharmacy APIs (1mg, Netmeds, etc.)                 │ │
-│  │  • Medicine Availability API                                │ │
-│  │  • Order Placement API                                       │ │
-│  │  • Delivery Tracking API                                     │ │
-│  └──────────────────────────────────────────────────────────────┘ │
-│                                                                   │
-│  ┌──────────────────────────────────────────────────────────────┐ │
-│  │  Output:                                                     │ │
-│  │  • Digital Prescription (PDF)                                │ │
-│  │  • Medicine Order (if patient chooses)                      │ │
-│  │  • Order Tracking                                           │ │
-│  │  → Sent to Patient (SMS/WhatsApp/App)                       │ │
-│  └──────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-#### Technology Stack
-
-**Backend**:
-- **Prescription Service**: Node.js/Python (REST APIs)
-- **PDF Generation**: PDFKit / ReportLab (tamper-proof prescriptions)
-- **Digital Signature**: Cryptographic signing (RSA/ECDSA)
-
-**Integration**:
-- **Pharmacy APIs**: REST APIs (Adapter pattern for different pharmacy partners)
-- **Payment Gateway**: Razorpay/Stripe (for medicine payments)
-- **Notification Service**: SMS, WhatsApp, Push notifications
-
-**Database**:
-- **Prescription Storage**: PostgreSQL (structured data)
-- **Order Tracking**: MongoDB (flexible schema for order status)
-
-#### Data Flow
-
-```
-1. Doctor completes consultation
-   ↓
-2. Doctor generates prescription (Prescription Service)
-   ↓
-3. Prescription saved (with digital signature)
-   ↓
-4. Patient receives prescription (SMS/WhatsApp/App)
-   ↓
-5. Patient chooses to order medicines
-   ↓
-6. System checks availability (Pharmacy Integration)
-   ↓
-7. Patient selects pharmacy
-   ↓
-8. Order placed (Order Manager)
-   ↓
-9. Order tracked (Delivery Tracking)
-   ↓
-10. Medicine delivered to patient
-```
-
-#### Key Architectural Decisions
-
-1. **Adapter Pattern**: Different pharmacy APIs unified through adapters
-2. **Digital Signature**: Cryptographic signing ensures tamper-proof prescriptions
-3. **Offline Support**: Prescriptions generated offline, synced later (R4)
-4. **Consent Required**: Patient consent needed before sharing with pharmacy (R5)
-5. **Multiple Pharmacy Partners**: Support 3-5 pharmacy partners initially
-
----
-
-### R4: Offline Sync & Storage (Foundation)
-
-#### Architecture Components
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│          R4: OFFLINE SYNC & STORAGE ARCHITECTURE                 │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│  ┌──────────────────────────────────────────────────────────────┐ │
-│  │  Mobile Apps (Patient, Sahayak)                               │ │
-│  │  ┌────────────────────────────────────────────────────┐     │ │
-│  │  │  Local SQLite Database                             │     │ │
-│  │  │  • Patient Data                                    │     │ │
-│  │  │  • Consultations                                  │     │ │
-│  │  │  • Vitals                                         │     │ │
-│  │  │  • Prescriptions                                  │     │ │
-│  │  │  • Sync Queue                                    │     │ │
-│  │  └────────────────────────────────────────────────────┘     │ │
-│  └──────────────────────────────────────────────────────────────┘ │
-│         │                                                          │
-│         │ (All writes go to local DB first)                        │
-│         │                                                          │
-│  ┌──────▼──────────────────────────────────────────────────────┐ │
-│  │         Offline Sync Service                                 │ │
-│  ├──────────────────────────────────────────────────────────────┤ │
-│  │                                                              │ │
-│  │  ┌────────────────────────────────────────────────────┐     │ │
-│  │  │  Sync Queue Manager                                │     │ │
-│  │  │  • Enqueue Operations (CREATE/UPDATE/DELETE)      │     │ │
-│  │  │  • Priority-based Sync                             │     │ │
-│  │  │  • Retry Failed Operations                        │     │ │
-│  │  └────────────────────────────────────────────────────┘     │ │
-│  │                                                              │ │
-│  │  ┌────────────────────────────────────────────────────┐     │ │
-│  │  │  Conflict Resolver                                  │     │ │
-│  │  │  • Detect Conflicts (timestamp/version)            │     │ │
-│  │  │  • Auto-resolve (last-write-wins)                  │     │ │
-│  │  │  • Flag for Manual Resolution                      │     │ │
-│  │  └────────────────────────────────────────────────────┘     │ │
-│  │                                                              │ │
-│  │  ┌────────────────────────────────────────────────────┐     │ │
-│  │  │  Background Sync Service                           │     │ │
-│  │  │  • Detect Connectivity                             │     │ │
-│  │  │  • Trigger Sync                                   │     │ │
-│  │  │  • Incremental Sync                               │     │ │
-│  │  │  • Status Tracking                                │     │ │
-│  │  └────────────────────────────────────────────────────┘     │ │
-│  └──────────────────────────────────────────────────────────────┘ │
-│         │                                                          │
-│         │ (Sync when online)                                       │
-│         │                                                          │
-│  ┌──────▼──────────────────────────────────────────────────────┐ │
-│  │  Remote Database (PostgreSQL/MongoDB)                        │ │
-│  │  • Centralized Data Storage                                  │ │
-│  │  • Conflict Resolution                                       │ │
-│  │  • Data Integrity                                           │ │
-│  └──────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-#### Technology Stack
-
-**Mobile**:
-- **Local Database**: SQLite (React Native SQLite / Flutter sqflite)
-- **Sync Library**: Custom implementation or use libraries like WatermelonDB
-
-**Backend**:
-- **Sync Service**: Node.js/Python (handles sync requests)
-- **Remote Database**: PostgreSQL (structured data) / MongoDB (flexible)
-
-**Infrastructure**:
-- **Message Queue**: RabbitMQ/Kafka (for async sync operations)
-- **Cache**: Redis (sync status, conflict resolution)
-
-#### Sync Strategy
-
-**Store-and-Forward Pattern**:
-1. **Write Path**: All writes → Local SQLite → Queue for sync
-2. **Read Path**: Read from local cache → Fallback to server if online
-3. **Sync Trigger**: 
-   - On connectivity restore
-   - Periodic (every 5 minutes when online)
-   - Manual trigger
-4. **Conflict Resolution**:
-   - **Auto-resolve**: Last-write-wins (timestamp comparison)
-   - **Manual**: Flag critical conflicts for user review
-
-#### Key Architectural Decisions
-
-1. **Local-First**: All operations work offline, sync is secondary
-2. **Queue-Based**: Operations queued, synced in background
-3. **Conflict Strategy**: Automatic for 90% of cases, manual for critical
-4. **Incremental Sync**: Only sync changed data (efficient)
-5. **Priority-Based**: Critical data (prescriptions, vitals) synced first
-
----
-
-### R5: Consent & Privacy (DPDP Act Compliance)
-
-#### Architecture Components
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│      R5: CONSENT & PRIVACY (DPDP ACT) ARCHITECTURE              │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│  ┌──────────────────────────────────────────────────────────────┐ │
-│  │  All Data Access Requests                                    │ │
-│  │  (Consultations, Vitals, Prescriptions, Records)              │ │
-│  └──────────────────┬───────────────────────────────────────────┘ │
-│                     │                                               │
-│  ┌──────────────────▼───────────────────────────────────────────┐ │
-│  │         Access Control Middleware                             │ │
-│  │  • Intercepts all requests                                    │ │
-│  │  • Checks RBAC permissions                                    │ │
-│  │  • Verifies consent                                           │ │
-│  │  • Enforces restrictions                                      │ │
-│  └──────────────────┬───────────────────────────────────────────┘ │
-│                     │                                               │
-│  ┌──────────────────▼───────────────────────────────────────────┐ │
-│  │         Consent & Privacy Service                             │ │
-│  ├──────────────────────────────────────────────────────────────┤ │
-│  │                                                              │ │
-│  │  ┌────────────────────────────────────────────────────┐     │ │
-│  │  │  RBAC Service                                       │     │ │
-│  │  │  • Role Definitions (PATIENT, SAHAYAK, DOCTOR, etc.)│     │ │
-│  │  │  • Permission Matrix                                 │     │ │
-│  │  │  • Access Control Checks                            │     │ │
-│  │  │  • Sahayak: Only Active Patient Data                │     │ │
-│  │  └────────────────────────────────────────────────────┘     │ │
-│  │                                                              │ │
-│  │  ┌────────────────────────────────────────────────────┐     │ │
-│  │  │  Consent Manager                                    │     │ │
-│  │  │  • Request Consent (OTP/Biometric)                  │     │ │
-│  │  │  • Verify Consent                                  │     │ │
-│  │  │  • Store Consent Records                           │     │ │
-│  │  │  • Revoke Consent                                  │     │ │
-│  │  │  • Consent Expiration                               │     │ │
-│  │  └────────────────────────────────────────────────────┘     │ │
-│  │                                                              │ │
-│  │  ┌────────────────────────────────────────────────────┐     │ │
-│  │  │  Encryption Service                                 │     │ │
-│  │  │  • Encrypt at Rest (AES-256)                       │     │ │
-│  │  │  • Encrypt in Transit (TLS 1.3)                     │     │ │
-│  │  │  • Key Management                                  │     │ │
-│  │  └────────────────────────────────────────────────────┘     │ │
-│  │                                                              │ │
-│  │  ┌────────────────────────────────────────────────────┐     │ │
-│  │  │  Audit Logger                                       │     │ │
-│  │  │  • Log All Access                                   │     │ │
-│  │  │  • Log Consent Actions                              │     │ │
-│  │  │  • Immutable Audit Trail                            │     │ │
-│  │  │  • Compliance Reports                               │     │ │
-│  │  └────────────────────────────────────────────────────┘     │ │
-│  └──────────────────────────────────────────────────────────────┘ │
-│                                                                   │
-│  ┌──────────────────────────────────────────────────────────────┐ │
-│  │  Verification Services                                        │ │
-│  │  • OTP Service (SMS)                                         │ │
-│  │  • Biometric Service (Fingerprint/Face)                      │ │
-│  │  • Signature Service (Digital Signature)                     │ │
-│  └──────────────────────────────────────────────────────────────┘ │
-│                                                                   │
-│  ┌──────────────────────────────────────────────────────────────┐ │
-│  │  Output:                                                     │ │
-│  │  • Access Granted/Denied                                     │ │
-│  │  • Audit Log Entry                                           │ │
-│  │  • Encrypted Data (if access granted)                        │ │
-│  └──────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-#### Technology Stack
-
-**Backend**:
-- **Consent Service**: Node.js/Python (RBAC, consent management)
-- **Encryption**: AES-256 (at rest), TLS 1.3 (in transit)
-- **Key Management**: AWS KMS / HashiCorp Vault
-
-**Authentication**:
-- **OTP Service**: Twilio / AWS SNS (SMS OTP)
-- **Biometric**: Device-native APIs (TouchID, FaceID, Android Biometric)
-
-**Database**:
-- **Consent Records**: PostgreSQL (immutable consent logs)
-- **Audit Logs**: Time-series database (InfluxDB) or PostgreSQL
-
-#### Access Control Flow
-
-```
-Data Access Request
-    ↓
-[Access Control Middleware]
-    ↓
-[Check User Role] (RBAC)
-    ↓
-[Check Resource Permissions]
-    ↓
-[Check Consent] (if required)
-    ↓
-[Check Conditions]
-    • Sahayak: Only active patient data?
-    • Doctor: Assigned to this patient?
-    • Consent: Valid and not expired?
-    ↓
-[Log Access] (Audit Logger)
-    ↓
-[Encrypt Data] (if sensitive)
-    ↓
-Grant/Deny Access
-```
-
-#### Key Architectural Decisions
-
-1. **Middleware Pattern**: Access control at API gateway level
-2. **RBAC Model**: Role-based with fine-grained permissions
-3. **Consent Storage**: Immutable consent records (cannot be deleted)
-4. **Encryption**: End-to-end encryption for sensitive data
-5. **Audit Trail**: All access logged, cannot be modified
-6. **DPDP Compliance**: Right to be forgotten, data portability, consent management
-
----
-
-### Integrated Architecture: All 5 Requirements
-
-#### Complete System Flow
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    COMPLETE SYSTEM FLOW                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│  1. Patient arrives at kiosk                                     │
-│     ↓                                                             │
-│  2. Sahayak registers patient (R5: Consent requested)           │
-│     ↓                                                             │
-│  3. Patient describes symptoms (local dialect)                   │
-│     ↓                                                             │
-│  4. R2: AI Triage & Translation                                  │
-│     • Detects language                                            │
-│     • Translates to English                                       │
-│     • Generates medical summary                                   │
-│     • Calculates severity score                                   │
-│     ↓                                                             │
-│  5. Consultation created (R4: Stored locally)                    │
-│     ↓                                                             │
-│  6. R1: Tele-Consultation starts                                 │
-│     • Video room created                                         │
-│     • Patient, Sahayak, Doctor join                              │
-│     • Sahayak uploads vitals (IoT devices)                       │
-│     • Vitals appear on doctor's screen                           │
-│     ↓                                                             │
-│  7. Doctor sees:                                                  │
-│     • Translated symptoms (R2)                                    │
-│     • Real-time vitals (R1)                                       │
-│     • Patient video                                              │
-│     ↓                                                             │
-│  8. Doctor generates prescription                                │
-│     ↓                                                             │
-│  9. R3: Prescription & Fulfillment                               │
-│     • Digital prescription created                               │
-│     • Pharmacy availability checked                              │
-│     • Patient can order medicines                                │
-│     ↓                                                             │
-│  10. All data synced (R4: Offline Sync)                          │
-│      • Local data → Remote database                              │
-│      • Conflicts resolved                                         │
-│     ↓                                                             │
-│  11. R5: Access logged (Audit Trail)                             │
-│      • All access logged for compliance                          │
-│                                                                   │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-#### Technology Stack Summary
-
-**Frontend**:
-- React Native (Patient, Sahayak apps - offline-capable)
-- React/Web (Doctor app - WebRTC support)
-
-**Backend Services**:
-- Node.js/Python microservices
-- API Gateway (Kong/AWS API Gateway)
-- Message Queue (Kafka/RabbitMQ)
-
-**Databases**:
-- PostgreSQL (primary data)
-- MongoDB (flexible schemas)
-- SQLite (local mobile storage)
-- Redis (cache, sync status)
-
-**External Services**:
-- WebRTC Media Server (Janus/Kurento)
-- LLM APIs (OpenAI/Anthropic)
-- Speech-to-Text (Google/AWS)
-- Translation APIs
-- Pharmacy APIs
-- OTP Service (SMS)
-
-**Infrastructure**:
-- Docker containers
-- Kubernetes orchestration
-- CDN (CloudFlare)
-- Monitoring (Prometheus + Grafana)
-
----
-
-### Architecture Validation
-
-#### Requirement Coverage Checklist
-
-- [x] **R1: Tele-Consultation**
-  - [x] Low-bandwidth video (256 Kbps)
-  - [x] Multi-party calls (Patient, Sahayak, Doctor)
-  - [x] IoT device integration (BP Monitor, Oximeter)
-  - [x] Real-time vitals on doctor's screen
-
-- [x] **R2: AI Triage & Translation**
-  - [x] Voice/text input in local dialect
-  - [x] Language detection
-  - [x] Translation to English
-  - [x] Medical summary generation
-  - [x] Severity scoring (1-10)
-  - [x] Triage priority
-
-- [x] **R3: Prescription & Fulfillment**
-  - [x] Digital prescription generation
-  - [x] Pharmacy integration
-  - [x] Medicine availability check
-  - [x] Order management
-  - [x] Delivery tracking
-
-- [x] **R4: Offline Sync & Storage**
-  - [x] Local SQLite storage
-  - [x] Store-and-forward pattern
-  - [x] Automatic sync when online
-  - [x] Conflict resolution
-
-- [x] **R5: Consent & Privacy**
-  - [x] RBAC implementation
-  - [x] Sahayak restrictions (active patients only)
-  - [x] Consent management (OTP/Biometric)
-  - [x] Audit logging
-  - [x] DPDP Act compliance
+### Mapping Requirements to Architecture
+
+#### Requirement 1: Location-Aware Product Discovery & Ordering
+- **Services**: LocationService, CatalogService, InventoryService
+- **Components**: LocationResolver, StoreSelector, ProductCatalog, InventoryManager
+- **Patterns**: Strategy Pattern (store selection), Observer Pattern (inventory updates)
+- **Technology**: Redis (location cache), PostgreSQL (catalog), Real-time sync
+
+#### Requirement 2: Ultra-Fast Order Fulfillment (10-20 Min SLA)
+- **Services**: OrderService, FulfillmentService, DeliveryService
+- **Components**: FulfillmentEngine, StoreSelector, SLAValidator, OrderRouter
+- **Patterns**: Strategy Pattern (fulfillment algorithms), Circuit Breaker (store failures)
+- **Technology**: Event-driven architecture, Real-time processing, Queue systems
+
+#### Requirement 3: Real-Time Inventory Management
+- **Services**: InventoryService, InventorySyncService
+- **Components**: InventoryManager, StockReserver, ReconciliationEngine
+- **Patterns**: Event Sourcing (inventory changes), Optimistic Locking (concurrency)
+- **Technology**: Redis (real-time cache), PostgreSQL (persistent), Event streaming
+
+#### Requirement 4: Dynamic Delivery Partner Assignment
+- **Services**: DeliveryService, PartnerManagementService
+- **Components**: PartnerMatcher, RouteOptimizer, TrackingService, AssignmentEngine
+- **Patterns**: Strategy Pattern (assignment algorithms), Observer Pattern (tracking)
+- **Technology**: Location services (Google Maps), Real-time messaging (WebSocket), ML models
+
+#### Requirement 5: End-to-End Order Lifecycle Management
+- **Services**: OrderService, NotificationService, TrackingService
+- **Components**: OrderManager, StatusTracker, ETACalculator, NotificationEngine
+- **Patterns**: State Machine Pattern (order states), Observer Pattern (notifications)
+- **Technology**: Event-driven architecture, WebSocket, Notification services
+
+#### Requirement 6: Seamless Payment & Refund Management
+- **Services**: PaymentService, RefundService
+- **Components**: PaymentGateway, RefundProcessor, TransactionManager
+- **Patterns**: Adapter Pattern (payment gateways), Circuit Breaker (gateway failures)
+- **Technology**: Payment gateways (Razorpay, Stripe), Secure storage, Encryption
+
+#### Requirement 7: Scalability & Resilience
+- **Services**: All services designed for scalability
+- **Components**: LoadBalancer, AutoScaler, CircuitBreaker, CacheManager
+- **Patterns**: Circuit Breaker, Bulkhead, Retry Pattern, CQRS
+- **Technology**: Kubernetes, Redis, CDN, Database replication
+
+#### Requirement 8: Operational Visibility & Monitoring
+- **Services**: MonitoringService, LoggingService, SecurityService
+- **Components**: MetricsCollector, AlertManager, TracingEngine, AuditLogger
+- **Patterns**: Observer Pattern (monitoring), Decorator Pattern (logging)
+- **Technology**: Prometheus, Grafana, ELK Stack, Jaeger
+
+#### Requirement 9: Extensible Platform Design
+- **Services**: ConfigurationService, CategoryService
+- **Components**: CityManager, CategoryManager, PluginManager, FeatureFlagManager
+- **Patterns**: Strategy Pattern (business models), Factory Pattern (extensibility)
+- **Technology**: Microservices, API Gateway, Configuration management
 
 ---
 
 ## Low-Level Design (LLD)
 
-### 1. Tele-Consultation Service - Detailed Design
+### Service-Level Design
 
-#### Component Structure
+#### Location Service - Detailed Design
+
+**Class Diagram:**
 ```
-TeleConsultationService
-├── ConsultationController
-│   ├── createConsultation()
-│   ├── joinConsultation()
-│   ├── endConsultation()
-│   └── getConsultationStatus()
-├── MediaManager
-│   ├── initializeWebRTC()
-│   ├── optimizeBandwidth()
-│   ├── handleLowBandwidth()
-│   └── recordSession()
-├── QueueManager
-│   ├── addToQueue()
-│   ├── assignDoctor()
-│   ├── prioritizeQueue()
-│   └── notifyDoctor()
-└── NotificationService
-    ├── sendNotification()
-    └── updateStatus()
+LocationService
+├── LocationResolver
+│   ├── +resolveLocation(coordinates: Coordinates): Location
+│   ├── +validateLocation(location: Location): boolean
+│   └── +getDeliveryAddress(userId: string): Address
+├── StoreSelector
+│   ├── +findNearestStores(location: Location, radius: number): Store[]
+│   ├── +selectOptimalStore(location: Location, items: Item[]): Store
+│   └── +calculateDistance(location1: Location, location2: Location): number
+└── GeofenceManager
+    ├── +isWithinGeofence(location: Location, storeId: string): boolean
+    └── +getGeofenceRadius(storeId: string): number
 ```
 
-#### Data Models
+**Key Methods:**
+- `resolveLocation(coordinates)`: Converts GPS coordinates to address
+- `findNearestStores(location, radius)`: Finds stores within delivery radius
+- `selectOptimalStore(location, items)`: Selects best store based on proximity, inventory, capacity
 
-**Consultation**
-```typescript
-interface Consultation {
-  id: string;
-  patientId: string;
-  sahayakId: string;
-  doctorId: string | null;
-  status: 'QUEUED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  scheduledAt: Date;
-  startedAt: Date | null;
-  endedAt: Date | null;
-  symptoms: string;
-  translatedSymptoms: string;
-  severityScore: number;
-  videoRoomId: string;
-  recordingUrl: string | null;
-  consentGiven: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-```
-
-**Vitals**
-```typescript
-interface Vitals {
-  id: string;
-  consultationId: string;
-  patientId: string;
-  bloodPressure: { systolic: number; diastolic: number };
-  oxygenSaturation: number;
-  heartRate: number;
-  temperature: number;
-  recordedBy: string; // Sahayak ID
-  recordedAt: Date;
-  deviceType: 'BP_MONITOR' | 'OXIMETER' | 'THERMOMETER';
-}
-```
-
-#### API Endpoints
-
-```
-POST   /api/v1/consultations
-GET    /api/v1/consultations/:id
-POST   /api/v1/consultations/:id/join
-POST   /api/v1/consultations/:id/end
-POST   /api/v1/consultations/:id/vitals
-GET    /api/v1/consultations/queue
-POST   /api/v1/consultations/:id/consent
-```
-
-#### Sequence Diagram: Consultation Flow
-
-```
-Patient → Sahayak App → TeleConsultation Service → AI Service → Doctor App
-   │            │                │                    │              │
-   │──Register──>│                │                    │              │
-   │            │──Create Consult─>                   │              │
-   │            │                │──Translate Symptoms─>              │
-   │            │                │<──Translated Summary              │
-   │            │                │──Add to Queue───────>             │
-   │            │                │                    │              │
-   │            │                │                    │──Notify Doctor
-   │            │                │                    │              │
-   │            │                │<──Doctor Accepts───              │
-   │            │                │                    │              │
-   │            │──Upload Vitals─>│                    │              │
-   │            │                │                    │              │
-   │            │<──Video Room───│                    │              │
-   │            │                │                    │              │
-   │<──Join Room─│                │                    │              │
-   │            │                │                    │<──Join Room──
-   │            │                │                    │              │
-   │──Consultation in Progress───│                    │              │
-   │            │                │                    │              │
-   │            │                │<──End Consultation─              │
-   │            │                │                    │              │
-   │<──Prescription──────────────│                    │              │
-```
-
-### 2. AI Triage & Translation Service - Detailed Design
-
-#### Component Structure
-```
-AITriageService
-├── TranslationEngine
-│   ├── translateDialect()
-│   ├── detectLanguage()
-│   └── normalizeText()
-├── SymptomAnalyzer
-│   ├── extractSymptoms()
-│   ├── classifySeverity()
-│   └── generateSummary()
-├── TriageEngine
-│   ├── calculateSeverityScore()
-│   ├── recommendPriority()
-│   └── suggestTriage()
-└── LLMService
-    ├── callLLM()
-    ├── formatPrompt()
-    └── parseResponse()
-```
-
-#### Data Models
-
-**SymptomInput**
-```typescript
-interface SymptomInput {
-  id: string;
-  consultationId: string;
-  patientId: string;
-  rawText: string;
-  audioUrl?: string;
-  detectedLanguage: string;
-  dialect: string;
-  timestamp: Date;
-}
-
-interface SymptomOutput {
-  id: string;
-  symptomInputId: string;
-  translatedText: string;
-  extractedSymptoms: string[];
-  severityScore: number; // 1-10
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  medicalSummary: string;
-  suggestedTriage: string;
-  confidence: number; // 0-1
-  processedAt: Date;
-}
-```
-
-#### Processing Flow
-
-```
-1. Receive symptom input (text/audio)
-2. Detect language and dialect
-3. Translate to English (if needed)
-4. Extract medical symptoms using LLM
-5. Classify severity using ML model
-6. Generate medical summary
-7. Calculate triage priority
-8. Return structured output
-```
-
-### 3. Offline Sync Service - Detailed Design
-
-#### Component Structure
-```
-OfflineSyncService
-├── LocalStorageManager
-│   ├── storeLocally()
-│   ├── retrieveLocal()
-│   └── clearLocal()
-├── SyncManager
-│   ├── detectConnectivity()
-│   ├── queueForSync()
-│   ├── syncData()
-│   └── handleConflict()
-├── ConflictResolver
-│   ├── detectConflict()
-│   ├── resolveConflict()
-│   └── mergeData()
-└── SyncStatusTracker
-    ├── trackSyncStatus()
-    ├── getPendingItems()
-    └── retryFailedSync()
-```
-
-#### Data Models
-
-**SyncQueue**
-```typescript
-interface SyncQueueItem {
-  id: string;
-  entityType: 'CONSULTATION' | 'VITALS' | 'PRESCRIPTION' | 'PATIENT';
-  entityId: string;
-  operation: 'CREATE' | 'UPDATE' | 'DELETE';
-  payload: any;
-  deviceId: string;
-  timestamp: Date;
-  status: 'PENDING' | 'SYNCING' | 'SYNCED' | 'FAILED' | 'CONFLICT';
-  retryCount: number;
-  lastError?: string;
-  syncedAt?: Date;
-}
-```
-
-#### Sync Strategy
-
-**Store-and-Forward Pattern:**
-1. **Write Path**: All writes go to local SQLite first, then queued for sync
-2. **Read Path**: Read from local cache, fallback to server if online
-3. **Sync Trigger**: 
-   - On connectivity restore
-   - Periodic background sync (every 5 minutes when online)
-   - Manual sync trigger
-4. **Conflict Resolution**: Last-write-wins with timestamp comparison, manual resolution for critical conflicts
-
-### 4. Consent & Privacy Service - Detailed Design
-
-#### Component Structure
-```
-ConsentPrivacyService
-├── ConsentManager
-│   ├── requestConsent()
-│   ├── verifyConsent()
-│   ├── revokeConsent()
-│   └── getConsentStatus()
-├── AccessControl
-│   ├── checkPermission()
-│   ├── enforceRBAC()
-│   └── auditAccess()
-├── EncryptionService
-│   ├── encryptData()
-│   ├── decryptData()
-│   └── rotateKeys()
-└── AuditLogger
-    ├── logAccess()
-    ├── logConsent()
-    └── generateAuditReport()
-```
-
-#### Data Models
-
-**Consent**
-```typescript
-interface Consent {
-  id: string;
-  patientId: string;
-  consentType: 'DATA_SHARING' | 'RECORDING' | 'PHARMACY_SHARING' | 'GOVT_SCHEME';
-  grantedTo: string; // Role or specific user ID
-  grantedBy: string; // Patient ID
-  verificationMethod: 'OTP' | 'BIOMETRIC' | 'SIGNATURE';
-  verificationToken: string;
-  status: 'PENDING' | 'GRANTED' | 'REVOKED' | 'EXPIRED';
-  grantedAt: Date;
-  expiresAt: Date;
-  revokedAt: Date | null;
-}
-
-interface AccessLog {
-  id: string;
-  userId: string;
-  role: 'SAHAYAK' | 'DOCTOR' | 'ADMIN';
-  resourceType: string;
-  resourceId: string;
-  action: 'READ' | 'WRITE' | 'DELETE';
-  ipAddress: string;
-  timestamp: Date;
-  consentId: string | null;
-  success: boolean;
-}
-```
-
-#### RBAC Model
-
-```
-Roles:
-- PATIENT: Can view own data, grant consent
-- SAHAYAK: Can view active patient data (only during consultation)
-- DOCTOR: Can view assigned patient data, generate prescriptions
-- ADMIN: Full access (with audit trail)
-- PHARMACY: Can view prescription details (with consent)
-- GOVT_SCHEME: Can verify eligibility (with consent)
-```
-
-### 5. Database Schema Design
-
-#### Core Tables
-
-**patients**
+**Database Schema:**
 ```sql
-CREATE TABLE patients (
-  id UUID PRIMARY KEY,
-  abha_id VARCHAR(50) UNIQUE,
-  name VARCHAR(255) NOT NULL,
-  phone VARCHAR(20) NOT NULL,
-  date_of_birth DATE,
-  gender VARCHAR(10),
-  address TEXT,
-  village VARCHAR(100),
-  district VARCHAR(100),
-  state VARCHAR(100),
-  emergency_contact VARCHAR(20),
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  encrypted_data JSONB -- For sensitive fields
+CREATE TABLE locations (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL,
+    latitude DECIMAL(10, 8) NOT NULL,
+    longitude DECIMAL(11, 8) NOT NULL,
+    address TEXT,
+    city VARCHAR(100),
+    pincode VARCHAR(10),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE dark_stores (
+    id UUID PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    latitude DECIMAL(10, 8) NOT NULL,
+    longitude DECIMAL(11, 8) NOT NULL,
+    address TEXT,
+    city VARCHAR(100),
+    delivery_radius_km DECIMAL(5, 2) NOT NULL,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW()
 );
 ```
 
-**consultations**
+#### Inventory Service - Detailed Design
+
+**Class Diagram:**
+```
+InventoryService
+├── InventoryManager
+│   ├── +getInventory(storeId: string, productId: string): Inventory
+│   ├── +reserveInventory(orderId: string, items: Item[]): boolean
+│   ├── +releaseInventory(orderId: string): void
+│   └── +updateInventory(storeId: string, productId: string, quantity: number): void
+├── StockReserver
+│   ├── +reserveStock(storeId: string, productId: string, quantity: number): Reservation
+│   ├── +releaseStock(reservationId: string): void
+│   └── +checkAvailability(storeId: string, productId: string): number
+└── ReconciliationEngine
+    ├── +reconcileInventory(storeId: string): ReconciliationResult
+    └── +detectDiscrepancies(storeId: string): Discrepancy[]
+```
+
+**Key Methods:**
+- `reserveInventory(orderId, items)`: Reserves inventory during order placement (prevents overselling)
+- `releaseInventory(orderId)`: Releases reserved inventory on cancellation
+- `updateInventory(storeId, productId, quantity)`: Updates inventory after fulfillment
+
+**Database Schema:**
 ```sql
-CREATE TABLE consultations (
-  id UUID PRIMARY KEY,
-  patient_id UUID REFERENCES patients(id),
-  sahayak_id UUID REFERENCES users(id),
-  doctor_id UUID REFERENCES users(id),
-  status VARCHAR(20) NOT NULL,
-  priority VARCHAR(20),
-  severity_score INTEGER,
-  symptoms TEXT,
-  translated_symptoms TEXT,
-  video_room_id VARCHAR(100),
-  recording_url TEXT,
-  consent_given BOOLEAN DEFAULT FALSE,
-  scheduled_at TIMESTAMP,
-  started_at TIMESTAMP,
-  ended_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  INDEX idx_patient_id (patient_id),
-  INDEX idx_doctor_id (doctor_id),
-  INDEX idx_status (status),
-  INDEX idx_created_at (created_at)
+CREATE TABLE inventory (
+    id UUID PRIMARY KEY,
+    store_id UUID NOT NULL,
+    product_id UUID NOT NULL,
+    available_quantity INT NOT NULL DEFAULT 0,
+    reserved_quantity INT NOT NULL DEFAULT 0,
+    last_updated TIMESTAMP DEFAULT NOW(),
+    UNIQUE(store_id, product_id)
+);
+
+CREATE TABLE inventory_reservations (
+    id UUID PRIMARY KEY,
+    order_id UUID NOT NULL,
+    store_id UUID NOT NULL,
+    product_id UUID NOT NULL,
+    quantity INT NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    status VARCHAR(20) DEFAULT 'RESERVED',
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE inventory_history (
+    id UUID PRIMARY KEY,
+    store_id UUID NOT NULL,
+    product_id UUID NOT NULL,
+    change_type VARCHAR(20), -- 'IN', 'OUT', 'ADJUSTMENT'
+    quantity INT NOT NULL,
+    reason TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
 );
 ```
 
-**vitals**
+#### Order Service - Detailed Design
+
+**Class Diagram:**
+```
+OrderService
+├── OrderManager
+│   ├── +createOrder(userId: string, items: Item[], address: Address): Order
+│   ├── +getOrder(orderId: string): Order
+│   ├── +cancelOrder(orderId: string, reason: string): boolean
+│   └── +updateOrderStatus(orderId: string, status: OrderStatus): void
+├── OrderValidator
+│   ├── +validateOrder(order: Order): ValidationResult
+│   └── +checkInventoryAvailability(order: Order): boolean
+└── OrderStateMachine
+    ├── +transition(orderId: string, newStatus: OrderStatus): boolean
+    └── +getValidTransitions(currentStatus: OrderStatus): OrderStatus[]
+```
+
+**Order State Machine:**
+```
+PENDING → CONFIRMED → ASSIGNED_TO_STORE → PICKING → PACKED → 
+ASSIGNED_TO_PARTNER → PICKED_UP → IN_TRANSIT → DELIVERED → CLOSED
+
+Alternative paths:
+- PENDING → CANCELLED (before confirmation)
+- CONFIRMED → CANCELLED (before store assignment)
+- ASSIGNED_TO_STORE → CANCELLED (before picking)
+- Any state → REFUNDED (on cancellation/refund)
+```
+
+**Database Schema:**
 ```sql
-CREATE TABLE vitals (
-  id UUID PRIMARY KEY,
-  consultation_id UUID REFERENCES consultations(id),
-  patient_id UUID REFERENCES patients(id),
-  blood_pressure_systolic INTEGER,
-  blood_pressure_diastolic INTEGER,
-  oxygen_saturation DECIMAL(5,2),
-  heart_rate INTEGER,
-  temperature DECIMAL(5,2),
-  recorded_by UUID REFERENCES users(id),
-  device_type VARCHAR(50),
-  recorded_at TIMESTAMP DEFAULT NOW(),
-  INDEX idx_consultation_id (consultation_id),
-  INDEX idx_patient_id (patient_id)
+CREATE TABLE orders (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL,
+    store_id UUID,
+    delivery_partner_id UUID,
+    status VARCHAR(20) NOT NULL,
+    total_amount DECIMAL(10, 2) NOT NULL,
+    delivery_address TEXT NOT NULL,
+    delivery_latitude DECIMAL(10, 8),
+    delivery_longitude DECIMAL(11, 8),
+    sla_minutes INT DEFAULT 20,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE order_items (
+    id UUID PRIMARY KEY,
+    order_id UUID NOT NULL,
+    product_id UUID NOT NULL,
+    quantity INT NOT NULL,
+    unit_price DECIMAL(10, 2) NOT NULL,
+    total_price DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(id)
+);
+
+CREATE TABLE order_status_history (
+    id UUID PRIMARY KEY,
+    order_id UUID NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    changed_at TIMESTAMP DEFAULT NOW(),
+    changed_by VARCHAR(100),
+    notes TEXT,
+    FOREIGN KEY (order_id) REFERENCES orders(id)
 );
 ```
 
-**prescriptions**
+#### Fulfillment Service - Detailed Design
+
+**Class Diagram:**
+```
+FulfillmentService
+├── FulfillmentEngine
+│   ├── +assignStore(order: Order): Store
+│   ├── +calculateFulfillmentTime(storeId: string, items: Item[]): number
+│   └── +checkStoreCapacity(storeId: string): CapacityStatus
+├── StoreSelector
+│   ├── +selectBestStore(order: Order): Store
+│   ├── +rankStores(order: Order): Store[]
+│   └── +calculateScore(store: Store, order: Order): number
+└── SLAValidator
+    ├── +validateSLA(order: Order): boolean
+    └── +calculateRemainingTime(order: Order): number
+```
+
+**Fulfillment Algorithm:**
+```
+1. Get order location and items
+2. Find stores within delivery radius
+3. For each store:
+   a. Check inventory availability for all items
+   b. Check current capacity (pending orders)
+   c. Calculate distance from order location
+   d. Calculate estimated fulfillment time
+   e. Calculate score = f(proximity, inventory, capacity, time)
+4. Select store with highest score
+5. Reserve inventory
+6. Assign order to store
+```
+
+**Database Schema:**
 ```sql
-CREATE TABLE prescriptions (
-  id UUID PRIMARY KEY,
-  consultation_id UUID REFERENCES consultations(id),
-  patient_id UUID REFERENCES patients(id),
-  doctor_id UUID REFERENCES users(id),
-  medicines JSONB NOT NULL, -- Array of medicine objects
-  instructions TEXT,
-  follow_up_date DATE,
-  status VARCHAR(20) DEFAULT 'PENDING',
-  pharmacy_order_id VARCHAR(100),
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  INDEX idx_consultation_id (consultation_id),
-  INDEX idx_patient_id (patient_id)
+CREATE TABLE store_capacity (
+    id UUID PRIMARY KEY,
+    store_id UUID NOT NULL,
+    current_pending_orders INT DEFAULT 0,
+    max_capacity INT NOT NULL,
+    average_fulfillment_time_minutes INT,
+    last_updated TIMESTAMP DEFAULT NOW(),
+    UNIQUE(store_id)
+);
+
+CREATE TABLE fulfillment_assignments (
+    id UUID PRIMARY KEY,
+    order_id UUID NOT NULL,
+    store_id UUID NOT NULL,
+    assigned_at TIMESTAMP DEFAULT NOW(),
+    estimated_ready_time TIMESTAMP,
+    actual_ready_time TIMESTAMP,
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (store_id) REFERENCES dark_stores(id)
 );
 ```
 
-**consents**
-```sql
-CREATE TABLE consents (
-  id UUID PRIMARY KEY,
-  patient_id UUID REFERENCES patients(id),
-  consent_type VARCHAR(50) NOT NULL,
-  granted_to VARCHAR(100) NOT NULL,
-  verification_method VARCHAR(20),
-  verification_token VARCHAR(255),
-  status VARCHAR(20) NOT NULL,
-  granted_at TIMESTAMP,
-  expires_at TIMESTAMP,
-  revoked_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT NOW(),
-  INDEX idx_patient_id (patient_id),
-  INDEX idx_status (status)
-);
+#### Delivery Service - Detailed Design
+
+**Class Diagram:**
+```
+DeliveryService
+├── PartnerMatcher
+│   ├── +assignPartner(order: Order): DeliveryPartner
+│   ├── +findAvailablePartners(location: Location, radius: number): DeliveryPartner[]
+│   └── +calculateAssignmentScore(partner: DeliveryPartner, order: Order): number
+├── RouteOptimizer
+│   ├── +optimizeRoute(orders: Order[]): Route
+│   ├── +calculateETA(pickupLocation: Location, deliveryLocation: Location): number
+│   └── +getOptimalRoute(start: Location, end: Location): Route
+└── AssignmentEngine
+    ├── +reassignPartner(orderId: string, reason: string): DeliveryPartner
+    └── +releasePartner(orderId: string): void
 ```
 
-**sync_queue**
+**Partner Assignment Algorithm:**
+```
+1. Get order pickup location (store) and delivery location
+2. Find available partners within radius
+3. For each partner:
+   a. Calculate distance from partner to store
+   b. Calculate distance from store to delivery location
+   c. Check partner's current workload
+   d. Check partner's rating
+   e. Calculate score = f(proximity, workload, rating, ETA)
+4. Select partner with highest score
+5. Assign order to partner
+6. Update partner availability
+```
+
+**Database Schema:**
 ```sql
-CREATE TABLE sync_queue (
-  id UUID PRIMARY KEY,
-  entity_type VARCHAR(50) NOT NULL,
-  entity_id UUID NOT NULL,
-  operation VARCHAR(20) NOT NULL,
-  payload JSONB NOT NULL,
-  device_id VARCHAR(100),
-  status VARCHAR(20) DEFAULT 'PENDING',
-  retry_count INTEGER DEFAULT 0,
-  last_error TEXT,
-  created_at TIMESTAMP DEFAULT NOW(),
-  synced_at TIMESTAMP,
-  INDEX idx_status (status),
-  INDEX idx_created_at (created_at)
+CREATE TABLE delivery_partners (
+    id UUID PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    phone VARCHAR(20) NOT NULL UNIQUE,
+    vehicle_type VARCHAR(50),
+    current_latitude DECIMAL(10, 8),
+    current_longitude DECIMAL(11, 8),
+    is_available BOOLEAN DEFAULT true,
+    current_orders_count INT DEFAULT 0,
+    max_concurrent_orders INT DEFAULT 1,
+    rating DECIMAL(3, 2),
+    total_deliveries INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE delivery_assignments (
+    id UUID PRIMARY KEY,
+    order_id UUID NOT NULL,
+    partner_id UUID NOT NULL,
+    assigned_at TIMESTAMP DEFAULT NOW(),
+    picked_up_at TIMESTAMP,
+    delivered_at TIMESTAMP,
+    status VARCHAR(20) DEFAULT 'ASSIGNED',
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (partner_id) REFERENCES delivery_partners(id)
+);
+
+CREATE TABLE partner_location_history (
+    id UUID PRIMARY KEY,
+    partner_id UUID NOT NULL,
+    latitude DECIMAL(10, 8) NOT NULL,
+    longitude DECIMAL(11, 8) NOT NULL,
+    recorded_at TIMESTAMP DEFAULT NOW(),
+    FOREIGN KEY (partner_id) REFERENCES delivery_partners(id)
 );
 ```
 
@@ -1362,553 +626,276 @@ CREATE TABLE sync_queue (
 
 ## Design Patterns
 
-### 1. **Store-and-Forward Pattern**
-**Problem**: Unreliable network connectivity in rural areas
-**Solution**: 
-- All data writes go to local database first
-- Background service queues data for sync when connectivity is available
-- Conflict resolution strategy for concurrent updates
+### 1. Strategy Pattern
+**Use Case**: Store selection, fulfillment algorithms, partner assignment
+**Implementation**: Different algorithms for store selection (proximity-based, capacity-based, inventory-based) can be swapped dynamically
+**Example**: `StoreSelectionStrategy` interface with implementations: `ProximityStrategy`, `CapacityStrategy`, `HybridStrategy`
 
-**Implementation**:
-```typescript
-// Pseudo-code structure
-class OfflineSyncManager {
-  async writeData(entity: Entity) {
-    // Write to local DB
-    await localDB.save(entity);
-    // Queue for sync
-    await syncQueue.add({
-      entityType: entity.type,
-      entityId: entity.id,
-      operation: 'CREATE',
-      payload: entity
-    });
-    // Trigger sync if online
-    if (this.isOnline()) {
-      this.sync();
-    }
-  }
-}
-```
+### 2. Observer Pattern
+**Use Case**: Inventory updates, order status changes, partner location updates
+**Implementation**: Services subscribe to events (inventory changes, order status updates) and react accordingly
+**Example**: `InventoryObserver` listens to inventory changes and updates cache
 
-### 2. **Circuit Breaker Pattern**
-**Problem**: External service failures (Govt APIs, Pharmacy APIs) can cascade
-**Solution**: 
-- Monitor failure rates
-- Open circuit after threshold failures
-- Fail fast during open state
-- Attempt recovery periodically
+### 3. State Machine Pattern
+**Use Case**: Order lifecycle management
+**Implementation**: Order states (PENDING, CONFIRMED, ASSIGNED, etc.) with valid transitions
+**Example**: `OrderStateMachine` manages order state transitions
 
-**Implementation**:
-```typescript
-class CircuitBreaker {
-  private failures = 0;
-  private state: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED';
-  
-  async execute(fn: Function) {
-    if (this.state === 'OPEN') {
-      throw new Error('Circuit breaker is OPEN');
-    }
-    try {
-      const result = await fn();
-      this.onSuccess();
-      return result;
-    } catch (error) {
-      this.onFailure();
-      throw error;
-    }
-  }
-}
-```
+### 4. Circuit Breaker Pattern
+**Use Case**: External service calls (payment gateways, maps API, notification services)
+**Implementation**: Prevents cascading failures when external services are down
+**Example**: `PaymentGatewayCircuitBreaker` opens circuit after N failures
 
-### 3. **Adapter Pattern**
-**Problem**: Multiple IoT device protocols and formats
-**Solution**: 
-- Create device adapters for each IoT device type
-- Normalize data format internally
-- Easy to add new devices
+### 5. Event Sourcing Pattern
+**Use Case**: Inventory changes, order history
+**Implementation**: Store all events (inventory changes, order status changes) for audit and replay
+**Example**: `InventoryEventStore` stores all inventory change events
 
-**Implementation**:
-```typescript
-interface DeviceAdapter {
-  connect(): Promise<void>;
-  readVitals(): Promise<Vitals>;
-  disconnect(): Promise<void>;
-}
+### 6. CQRS (Command Query Responsibility Segregation)
+**Use Case**: Read-heavy operations (product catalog, order history)
+**Implementation**: Separate read and write models for better performance
+**Example**: Write to PostgreSQL, read from Redis/Elasticsearch
 
-class BPMonitorAdapter implements DeviceAdapter {
-  // BP Monitor specific implementation
-}
+### 7. Repository Pattern
+**Use Case**: Data access abstraction
+**Implementation**: Abstract data access layer for easier testing and swapping data sources
+**Example**: `OrderRepository`, `InventoryRepository`
 
-class OximeterAdapter implements DeviceAdapter {
-  // Oximeter specific implementation
-}
-```
+### 8. Factory Pattern
+**Use Case**: Creating different types of services (payment gateways, notification channels)
+**Implementation**: Factory creates appropriate implementation based on configuration
+**Example**: `PaymentGatewayFactory` creates Razorpay/Stripe gateway based on config
 
-### 4. **Strategy Pattern**
-**Problem**: Different bandwidth optimization strategies based on network conditions
-**Solution**: 
-- Define bandwidth optimization strategies
-- Switch strategies dynamically based on network quality
+### 9. Adapter Pattern
+**Use Case**: Integrating with external services (payment gateways, maps API)
+**Implementation**: Adapter translates between our interface and external service interface
+**Example**: `PaymentGatewayAdapter` adapts different payment gateway APIs to our interface
 
-**Implementation**:
-```typescript
-interface BandwidthStrategy {
-  optimizeVideo(stream: VideoStream): VideoStream;
-}
+### 10. Bulkhead Pattern
+**Use Case**: Isolating failures between services
+**Implementation**: Separate thread pools/resources for different services
+**Example**: Payment service failures don't affect order service
 
-class LowBandwidthStrategy implements BandwidthStrategy {
-  optimizeVideo(stream) {
-    // Reduce resolution, frame rate
-  }
-}
+### 11. Retry Pattern
+**Use Case**: Transient failures (network issues, temporary service unavailability)
+**Implementation**: Automatic retry with exponential backoff
+**Example**: `RetryHandler` retries failed API calls with backoff
 
-class HighBandwidthStrategy implements BandwidthStrategy {
-  optimizeVideo(stream) {
-    // Maintain quality
-  }
-}
-```
-
-### 5. **Observer Pattern**
-**Problem**: Multiple components need to react to consultation status changes
-**Solution**: 
-- Event-driven architecture
-- Publish consultation events
-- Subscribers react accordingly
-
-**Implementation**:
-```typescript
-class ConsultationEventBus {
-  private subscribers: Map<string, Function[]> = new Map();
-  
-  subscribe(event: string, handler: Function) {
-    // Add subscriber
-  }
-  
-  publish(event: string, data: any) {
-    // Notify all subscribers
-  }
-}
-
-// Usage
-eventBus.subscribe('CONSULTATION_STARTED', (data) => {
-  notificationService.notifyDoctor(data);
-  queueService.removeFromQueue(data.id);
-});
-```
-
-### 6. **Repository Pattern**
-**Problem**: Decouple data access logic from business logic
-**Solution**: 
-- Abstract data access behind repository interfaces
-- Easy to swap implementations (local DB, remote DB, cache)
-
-**Implementation**:
-```typescript
-interface ConsultationRepository {
-  findById(id: string): Promise<Consultation>;
-  save(consultation: Consultation): Promise<void>;
-  findByPatientId(patientId: string): Promise<Consultation[]>;
-}
-
-class LocalConsultationRepository implements ConsultationRepository {
-  // SQLite implementation
-}
-
-class RemoteConsultationRepository implements ConsultationRepository {
-  // API implementation
-}
-```
-
-### 7. **Factory Pattern**
-**Problem**: Creating different types of notifications (SMS, WhatsApp, Push)
-**Solution**: 
-- Notification factory creates appropriate notification handler
-- Easy to add new notification channels
-
-**Implementation**:
-```typescript
-interface NotificationHandler {
-  send(message: string, recipient: string): Promise<void>;
-}
-
-class NotificationFactory {
-  create(type: 'SMS' | 'WHATSAPP' | 'PUSH'): NotificationHandler {
-    switch(type) {
-      case 'WHATSAPP': return new WhatsAppHandler();
-      case 'SMS': return new SMSHandler();
-      case 'PUSH': return new PushHandler();
-    }
-  }
-}
-```
-
-### 8. **Facade Pattern**
-**Problem**: Complex interactions between multiple services for consultation flow
-**Solution**: 
-- ConsultationFacade provides simple interface
-- Hides complexity of orchestrating multiple services
-
-**Implementation**:
-```typescript
-class ConsultationFacade {
-  async startConsultation(patientId: string, symptoms: string) {
-    // 1. Create consultation
-    const consultation = await consultationService.create(patientId);
-    // 2. Translate symptoms
-    const translated = await aiService.translate(symptoms);
-    // 3. Calculate severity
-    const severity = await aiService.analyze(translated);
-    // 4. Add to queue
-    await queueService.add(consultation.id, severity);
-    // 5. Notify doctor
-    await notificationService.notify(consultation.id);
-    return consultation;
-  }
-}
-```
-
-### 9. **Proxy Pattern**
-**Problem**: Need to add caching, logging, access control to service calls
-**Solution**: 
-- Service proxy intercepts calls
-- Adds cross-cutting concerns
-
-**Implementation**:
-```typescript
-class ConsultationServiceProxy {
-  constructor(private service: ConsultationService) {}
-  
-  async getConsultation(id: string) {
-    // Check cache
-    const cached = await cache.get(id);
-    if (cached) return cached;
-    
-    // Check access
-    if (!this.hasAccess(id)) throw new Error('Unauthorized');
-    
-    // Log access
-    await auditLogger.log('READ', id);
-    
-    // Call actual service
-    const result = await this.service.getConsultation(id);
-    
-    // Cache result
-    await cache.set(id, result);
-    
-    return result;
-  }
-}
-```
-
-### 10. **Command Pattern**
-**Problem**: Need to queue, undo, and log operations (especially for offline sync)
-**Solution**: 
-- Encapsulate operations as command objects
-- Queue commands for execution
-- Support undo/redo
-
-**Implementation**:
-```typescript
-interface Command {
-  execute(): Promise<void>;
-  undo(): Promise<void>;
-}
-
-class CreateConsultationCommand implements Command {
-  constructor(private consultation: Consultation) {}
-  
-  async execute() {
-    await consultationService.create(this.consultation);
-  }
-  
-  async undo() {
-    await consultationService.delete(this.consultation.id);
-  }
-}
-
-class CommandQueue {
-  private queue: Command[] = [];
-  
-  async execute(command: Command) {
-    this.queue.push(command);
-    await command.execute();
-  }
-}
-```
-
-### 11. **Template Method Pattern**
-**Problem**: Similar flows for different consultation types with slight variations
-**Solution**: 
-- Define template method with common steps
-- Subclasses override specific steps
-
-**Implementation**:
-```typescript
-abstract class ConsultationFlow {
-  async process() {
-    await this.validatePatient();
-    await this.collectSymptoms();
-    await this.analyzeSymptoms();
-    await this.assignDoctor();
-    await this.startConsultation();
-    await this.completeConsultation();
-  }
-  
-  protected abstract collectSymptoms(): Promise<void>;
-  protected abstract assignDoctor(): Promise<void>;
-}
-
-class EmergencyConsultationFlow extends ConsultationFlow {
-  protected async assignDoctor() {
-    // Assign available doctor immediately
-  }
-}
-
-class ScheduledConsultationFlow extends ConsultationFlow {
-  protected async assignDoctor() {
-    // Assign based on schedule
-  }
-}
-```
-
-### 12. **Decorator Pattern**
-**Problem**: Need to add features like encryption, compression, logging to data without modifying core classes
-**Solution**: 
-- Wrap data handlers with decorators
-- Compose features dynamically
-
-**Implementation**:
-```typescript
-interface DataHandler {
-  handle(data: any): Promise<any>;
-}
-
-class EncryptionDecorator implements DataHandler {
-  constructor(private handler: DataHandler) {}
-  
-  async handle(data: any) {
-    const encrypted = await this.encrypt(data);
-    return this.handler.handle(encrypted);
-  }
-}
-
-class CompressionDecorator implements DataHandler {
-  constructor(private handler: DataHandler) {}
-  
-  async handle(data: any) {
-    const compressed = await this.compress(data);
-    return this.handler.handle(compressed);
-  }
-}
-```
+### 12. Decorator Pattern
+**Use Case**: Adding cross-cutting concerns (logging, caching, monitoring)
+**Implementation**: Decorators wrap services to add functionality
+**Example**: `CachingDecorator` wraps service calls with caching
 
 ---
 
 ## System Components
 
-### Technology Stack Recommendations
+### API Gateway
+- **Purpose**: Single entry point for all client requests
+- **Features**: Authentication, rate limiting, routing, request/response transformation
+- **Technology**: Kong, AWS API Gateway, or custom implementation
 
-#### Frontend
-- **Kiosk/Sahayak Apps**: React Native (offline-first, cross-platform)
-- **Doctor App**: React (WebRTC support, desktop-friendly)
-- **State Management**: Redux Toolkit / Zustand
-- **Offline Storage**: SQLite (via react-native-sqlite-storage)
+### Service Mesh
+- **Purpose**: Service-to-service communication, load balancing, security
+- **Features**: mTLS, circuit breakers, retries, observability
+- **Technology**: Istio, Linkerd, or Consul Connect
 
-#### Backend
-- **API Framework**: Node.js (Express) / Python (FastAPI) / Java (Spring Boot)
-- **Microservices Communication**: gRPC (internal), REST (external)
-- **Message Queue**: Apache Kafka / RabbitMQ
-- **Service Discovery**: Consul / Eureka
+### Message Queue
+- **Purpose**: Asynchronous communication between services
+- **Features**: Event streaming, pub/sub, queue management
+- **Technology**: Kafka (for event streaming), RabbitMQ (for queues)
 
-#### Database
-- **Primary DB**: PostgreSQL (structured data) / MongoDB (flexible schemas)
-- **Offline DB**: SQLite (mobile apps)
-- **Cache**: Redis (session, queue, rate limiting)
-- **Search**: Elasticsearch (patient search, symptom search)
+### Cache Layer
+- **Purpose**: Fast data access for frequently accessed data
+- **Features**: In-memory caching, distributed caching
+- **Technology**: Redis (for real-time data), Memcached (for simple caching)
 
-#### Infrastructure
-- **Containerization**: Docker
-- **Orchestration**: Kubernetes
-- **API Gateway**: Kong / AWS API Gateway
-- **CDN**: CloudFront / Cloudflare (for static assets, video)
-- **Monitoring**: Prometheus + Grafana
-- **Logging**: ELK Stack (Elasticsearch, Logstash, Kibana)
+### Database Layer
+- **Purpose**: Persistent data storage
+- **Features**: ACID transactions, replication, sharding
+- **Technology**: PostgreSQL (for relational data), MongoDB (for document data)
 
-#### AI/ML Services
-- **LLM**: OpenAI GPT-4 / Anthropic Claude / Local LLM (for privacy)
-- **Speech-to-Text**: Google Speech-to-Text / AWS Transcribe
-- **Translation**: Google Translate API / Custom model
-- **Computer Vision**: TensorFlow / PyTorch models
-- **ML Framework**: TensorFlow Serving / MLflow
+### Search Engine
+- **Purpose**: Fast product search and filtering
+- **Features**: Full-text search, faceted search, autocomplete
+- **Technology**: Elasticsearch
 
-#### External Integrations
-- **Video**: WebRTC (Janus/Kurento media server)
-- **WhatsApp**: WhatsApp Business API
-- **Govt APIs**: Ayushman Bharat APIs (REST)
-- **Pharmacy**: Partner pharmacy APIs
+### CDN
+- **Purpose**: Fast content delivery
+- **Features**: Static asset caching, geographic distribution
+- **Technology**: CloudFront, Cloudflare, or Fastly
 
 ---
 
 ## Data Flow
 
-### Consultation Flow (End-to-End)
+### Order Placement Flow
 
 ```
-1. Patient arrives at kiosk
-   ↓
-2. Sahayak registers/authenticates patient
-   ↓
-3. Patient describes symptoms (voice/text in dialect)
-   ↓
-4. Sahayak uploads vitals from IoT devices
-   ↓
-5. System translates symptoms to English
-   ↓
-6. AI analyzes and calculates severity score
-   ↓
-7. Consultation created and added to queue
-   ↓
-8. Doctor notified (if available)
-   ↓
-9. Doctor accepts consultation
-   ↓
-10. Video room created (low-bandwidth optimized)
-    ↓
-11. Patient, Sahayak, Doctor join video call
-    ↓
-12. Consultation proceeds (with AI assistance)
-    ↓
-13. Doctor generates prescription
-    ↓
-14. Prescription saved and shared with patient
-    ↓
-15. Pharmacy integration (if consent given)
-    ↓
-16. Medicine order placed
-    ↓
-17. Follow-up reminders scheduled (WhatsApp)
-    ↓
-18. Consultation marked complete
+1. Customer App
+   ↓ (POST /api/orders)
+2. API Gateway
+   ↓ (authenticate, rate limit)
+3. Order Service
+   ↓ (validate order)
+4. Inventory Service
+   ↓ (check & reserve inventory)
+5. Payment Service
+   ↓ (process payment)
+6. Order Service
+   ↓ (create order, publish event)
+7. Event Bus (Kafka)
+   ↓ (order.created event)
+8. Fulfillment Service
+   ↓ (assign store)
+9. Notification Service
+   ↓ (send confirmation)
+10. Customer App
+    ↓ (order confirmed)
 ```
 
-### Offline Sync Flow
+### Order Fulfillment Flow
 
 ```
-1. App detects offline mode
-   ↓
-2. All writes go to local SQLite
-   ↓
-3. Operations queued in sync_queue table
-   ↓
-4. App detects connectivity restored
-   ↓
-5. Background sync service starts
-   ↓
-6. For each queued item:
-   a. Send to server
-   b. If conflict detected → resolve
-   c. Mark as synced
-   ↓
-7. Update local cache with server data
-   ↓
-8. Clear synced items from queue
+1. Fulfillment Service
+   ↓ (assign store)
+2. Dark Store Operations
+   ↓ (pick & pack)
+3. Dark Store Operations
+   ↓ (mark as ready)
+4. Event Bus
+   ↓ (order.ready event)
+5. Delivery Service
+   ↓ (assign partner)
+6. Notification Service
+   ↓ (send pickup notification)
+7. Delivery Partner App
+   ↓ (pickup order)
+8. Tracking Service
+   ↓ (update status)
+9. Delivery Partner App
+   ↓ (deliver order)
+10. Order Service
+    ↓ (mark as delivered)
+11. Notification Service
+    ↓ (send delivery confirmation)
 ```
 
-### Consent & Access Flow
+### Inventory Sync Flow
 
 ```
-1. Patient needs to share data
-   ↓
-2. System requests consent (OTP/Biometric)
-   ↓
-3. Patient verifies identity
-   ↓
-4. Consent granted and stored
-   ↓
-5. Access request comes in
-   ↓
-6. System checks:
-   - Role has permission?
-   - Consent exists and valid?
-   - Access within scope?
-   ↓
-7. If all checks pass → grant access + log
-   ↓
-8. If fails → deny + log + notify
+1. Dark Store Operations
+   ↓ (scan barcode, update inventory)
+2. Dark Store System
+   ↓ (publish inventory.update event)
+3. Event Bus
+   ↓ (inventory.update event)
+4. Inventory Service
+   ↓ (update inventory)
+5. Cache (Redis)
+   ↓ (update cache)
+6. Catalog Service
+   ↓ (update product availability)
+7. Customer App
+   ↓ (real-time inventory update)
 ```
 
 ---
 
 ## Security Considerations
 
-1. **Data Encryption**: 
-   - At rest: AES-256
-   - In transit: TLS 1.3
-   - End-to-end encryption for video calls
+### Authentication & Authorization
+- **JWT Tokens**: Stateless authentication for API access
+- **OAuth 2.0**: For third-party integrations
+- **Role-Based Access Control (RBAC)**: Different roles (customer, store staff, delivery partner, admin)
+- **API Keys**: For service-to-service communication
 
-2. **Authentication**:
-   - OAuth 2.0 / JWT tokens
-   - Multi-factor authentication for doctors/admins
-   - Biometric authentication for patients
+### Data Protection
+- **Encryption at Rest**: Database encryption (AES-256)
+- **Encryption in Transit**: TLS 1.3 for all communications
+- **PCI-DSS Compliance**: For payment data
+- **PII Protection**: Encrypt sensitive customer data
 
-3. **Authorization**:
-   - Role-Based Access Control (RBAC)
-   - Attribute-Based Access Control (ABAC) for fine-grained control
-   - Consent-based data sharing
-
-4. **Audit Logging**:
-   - All data access logged
-   - Immutable audit trail
-   - Regular compliance audits
-
-5. **Privacy**:
-   - Data minimization
-   - Right to be forgotten
-   - Consent management
-   - DPDP Act compliance
+### Security Monitoring
+- **Intrusion Detection**: Monitor for suspicious activities
+- **Rate Limiting**: Prevent DDoS and abuse
+- **Audit Logging**: Log all security-relevant events
+- **Vulnerability Scanning**: Regular security scans
 
 ---
 
 ## Scalability & Performance
 
-1. **Horizontal Scaling**: Microservices can scale independently
-2. **Caching Strategy**: Redis for frequently accessed data
-3. **CDN**: Static assets and video content delivery
-4. **Database Sharding**: By region/state for patient data
-5. **Load Balancing**: Round-robin / Least connections
-6. **Rate Limiting**: Per user, per API endpoint
-7. **Connection Pooling**: Database connection management
-8. **Async Processing**: Background jobs for heavy operations
+### Horizontal Scaling
+- **Microservices**: Each service can scale independently
+- **Kubernetes**: Auto-scaling based on CPU/memory/custom metrics
+- **Load Balancing**: Distribute traffic across multiple instances
+
+### Caching Strategy
+- **Redis**: Cache frequently accessed data (inventory, product catalog)
+- **CDN**: Cache static assets (images, CSS, JS)
+- **Application Cache**: Cache computed results
+
+### Database Optimization
+- **Read Replicas**: Distribute read load
+- **Sharding**: Partition data by city/store
+- **Indexing**: Optimize query performance
+- **Connection Pooling**: Efficient database connections
+
+### Performance Targets
+- **API Response Time**: < 200ms (p95)
+- **Order Placement**: < 2 seconds end-to-end
+- **Inventory Updates**: < 100ms propagation
+- **Order Tracking**: Real-time (< 1 second latency)
 
 ---
 
 ## Monitoring & Observability
 
-1. **Metrics**: 
-   - Response times
-   - Error rates
-   - Queue lengths
-   - Active consultations
-   - Sync success rates
+### Metrics
+- **Application Metrics**: Request rate, error rate, latency
+- **Business Metrics**: Orders per minute, delivery SLA compliance, inventory accuracy
+- **Infrastructure Metrics**: CPU, memory, disk, network
 
-2. **Logging**:
-   - Structured logging (JSON)
-   - Log levels (DEBUG, INFO, WARN, ERROR)
-   - Centralized log aggregation
+### Logging
+- **Structured Logging**: JSON format for easy parsing
+- **Log Aggregation**: Centralized logging (ELK Stack)
+- **Log Retention**: 30 days for application logs, 1 year for audit logs
 
-3. **Tracing**:
-   - Distributed tracing (Jaeger/Zipkin)
-   - Request ID propagation
-   - Service dependency mapping
+### Tracing
+- **Distributed Tracing**: Track requests across services (Jaeger/Zipkin)
+- **Trace Sampling**: Sample traces to reduce overhead
+- **Service Map**: Visualize service dependencies
 
-4. **Alerting**:
-   - High error rates
-   - Service downtime
-   - Queue backup
-   - Sync failures
+### Alerting
+- **Critical Alerts**: System downtime, payment failures, SLA breaches
+- **Warning Alerts**: High error rates, performance degradation
+- **Notification Channels**: Email, SMS, Slack, PagerDuty
 
 ---
 
-This architecture document provides a comprehensive foundation for building the GramSeva Health platform. Each component can be further detailed based on specific implementation requirements.
+## Deployment Architecture
+
+### Infrastructure
+- **Cloud Provider**: AWS / GCP / Azure
+- **Container Orchestration**: Kubernetes
+- **Container Registry**: Docker Hub / ECR / GCR
+- **CI/CD**: Jenkins / GitLab CI / GitHub Actions
+
+### Environment Strategy
+- **Development**: Single cluster, shared services
+- **Staging**: Production-like environment for testing
+- **Production**: Multi-region deployment for high availability
+
+### Disaster Recovery
+- **Backup Strategy**: Daily database backups, point-in-time recovery
+- **Multi-Region**: Deploy in multiple regions
+- **Failover**: Automatic failover to backup region
+- **RTO**: Recovery Time Objective < 1 hour
+- **RPO**: Recovery Point Objective < 15 minutes
+
+---
+
+**Last Updated**: January 2025
+**Version**: 1.0
+**Status**: Design Complete, Implementation Pending

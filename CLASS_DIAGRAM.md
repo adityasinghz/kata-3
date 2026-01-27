@@ -1,624 +1,662 @@
-# FlashKart Quick Commerce - Class Diagram
+# LearnCraft - Class Diagram
+
+> **⚠️ Core Requirements**: Classes are designed around the core requirements defined in [KEY_REQUIREMENTS.md](./KEY_REQUIREMENTS.md).
 
 ## Table of Contents
-1. [Core Domain Classes](#core-domain-classes)
-2. [Service Layer Classes](#service-layer-classes)
-3. [Complete Class Diagram](#complete-class-diagram)
-4. [Class Relationships](#class-relationships)
+1. [Overview](#overview)
+2. [Domain Layer Classes](#domain-layer-classes)
+3. [Service Layer Classes](#service-layer-classes)
+4. [Infrastructure Layer Classes](#infrastructure-layer-classes)
+5. [Complete Class Diagram](#complete-class-diagram)
+6. [Class Relationships](#class-relationships)
 
 ---
 
-## Core Domain Classes
+## Overview
 
-### Order Management Domain
+The LearnCraft platform follows a **layered architecture** with clear separation of concerns:
 
-```java
-class Order {
-    - UUID id
-    - UUID userId
-    - UUID storeId
-    - UUID deliveryPartnerId
-    - OrderStatus status
-    - Address deliveryAddress
-    - BigDecimal totalAmount
-    - int slaMinutes
-    - DateTime createdAt
-    - DateTime updatedAt
+- **Domain Layer**: Core business entities and value objects
+- **Service Layer**: Business logic and orchestration
+- **Infrastructure Layer**: External integrations and data access
+
+---
+
+## Domain Layer Classes
+
+### Core Domain Classes
+
+```mermaid
+classDiagram
+    class User {
+        +UUID id
+        +String email
+        +String passwordHash
+        +String firstName
+        +String lastName
+        +UserRole role
+        +SubscriptionTier subscription
+        +DateTime createdAt
+        +DateTime lastLoginAt
+        +Boolean isActive
+        +getFullName() String
+        +hasActiveSubscription() Boolean
+        +canAccessLabs() Boolean
+    }
     
-    + createOrder(userId, items, address): Order
-    + updateStatus(newStatus): void
-    + cancelOrder(reason): void
-    + calculateTotal(): BigDecimal
-    + validateOrder(): boolean
-    + getRemainingSLA(): int
-}
-
-class OrderItem {
-    - UUID id
-    - UUID orderId
-    - UUID productId
-    - int quantity
-    - BigDecimal unitPrice
-    - BigDecimal totalPrice
+    class Course {
+        +UUID id
+        +String title
+        +String slug
+        +String description
+        +UUID instructorId
+        +Category category
+        +SkillLevel level
+        +CourseStatus status
+        +Integer durationMinutes
+        +Decimal price
+        +DateTime publishedAt
+        +List~Module~ modules
+        +getTotalLessons() Integer
+        +getTotalLabs() Integer
+        +isPublished() Boolean
+    }
     
-    + calculateTotal(): BigDecimal
-}
-
-class OrderStatus {
-    <<enumeration>>
-    PENDING
-    CONFIRMED
-    ASSIGNED_TO_STORE
-    PICKING
-    PACKED
-    ASSIGNED_TO_PARTNER
-    PICKED_UP
-    IN_TRANSIT
-    DELIVERED
-    CANCELLED
-    REFUNDED
-}
-
-class Address {
-    - String street
-    - String city
-    - String state
-    - String pincode
-    - BigDecimal latitude
-    - BigDecimal longitude
+    class Module {
+        +UUID id
+        +UUID courseId
+        +String title
+        +String description
+        +Integer orderIndex
+        +List~Lesson~ lessons
+        +getDurationMinutes() Integer
+    }
     
-    + validate(): boolean
-    + getFullAddress(): String
-}
+    class Lesson {
+        +UUID id
+        +UUID moduleId
+        +String title
+        +LessonType type
+        +Integer orderIndex
+        +Integer durationMinutes
+        +Boolean isFree
+        +getContent() LessonContent
+    }
+    
+    class Video {
+        +UUID id
+        +UUID lessonId
+        +String title
+        +Integer durationSeconds
+        +String hlsUrl
+        +String thumbnailUrl
+        +VideoStatus status
+        +String transcript
+        +List~VideoQuality~ qualities
+        +getStreamingUrl(quality) String
+    }
+    
+    class Lab {
+        +UUID id
+        +UUID lessonId
+        +String title
+        +String description
+        +UUID templateId
+        +Integer durationMinutes
+        +LabDifficulty difficulty
+        +String instructions
+        +JSON successCriteria
+        +getTemplate() LabTemplate
+    }
+    
+    class LabTemplate {
+        +UUID id
+        +String name
+        +String baseImage
+        +String initScript
+        +JSON resourceLimits
+        +List~Integer~ ports
+        +TechStack techStack
+        +provision() LabSession
+    }
+    
+    class LabSession {
+        +UUID id
+        +UUID labId
+        +UUID userId
+        +SessionStatus status
+        +String containerId
+        +String terminalUrl
+        +DateTime startedAt
+        +DateTime expiresAt
+        +Integer resetCount
+        +isActive() Boolean
+        +extend(minutes) void
+        +reset() void
+        +terminate() void
+    }
+
+    Course "1" --> "*" Module
+    Module "1" --> "*" Lesson
+    Lesson "1" --> "0..1" Video
+    Lesson "1" --> "0..1" Lab
+    Lab "1" --> "1" LabTemplate
+    Lab "1" --> "*" LabSession
+    LabSession "*" --> "1" User
 ```
 
-### Product & Inventory Domain
+### Enrollment & Progress Classes
 
-```java
-class Product {
-    - UUID id
-    - String name
-    - String description
-    - String category
-    - List<String> images
-    - BigDecimal basePrice
-    - Map<UUID, BigDecimal> storePrices
-    - ProductStatus status
+```mermaid
+classDiagram
+    class Enrollment {
+        +UUID id
+        +UUID userId
+        +UUID courseId
+        +EnrollmentStatus status
+        +DateTime enrolledAt
+        +DateTime completedAt
+        +Decimal pricePaid
+        +isActive() Boolean
+        +getProgress() CourseProgress
+    }
     
-    + getPrice(storeId): BigDecimal
-    + isAvailable(storeId): boolean
-}
+    class CourseProgress {
+        +UUID id
+        +UUID enrollmentId
+        +Integer completedLessons
+        +Integer totalLessons
+        +Integer completedLabs
+        +Integer totalLabs
+        +Integer timeSpentMinutes
+        +DateTime lastAccessedAt
+        +getPercentComplete() Integer
+    }
+    
+    class LessonProgress {
+        +UUID id
+        +UUID userId
+        +UUID lessonId
+        +ProgressStatus status
+        +Integer videoPosition
+        +Integer videoDuration
+        +Boolean labCompleted
+        +DateTime startedAt
+        +DateTime completedAt
+        +getPercentComplete() Integer
+    }
+    
+    class Achievement {
+        +UUID id
+        +String name
+        +String description
+        +String iconUrl
+        +AchievementType type
+        +JSON criteria
+    }
+    
+    class UserAchievement {
+        +UUID id
+        +UUID userId
+        +UUID achievementId
+        +DateTime earnedAt
+    }
+    
+    class Certificate {
+        +UUID id
+        +UUID userId
+        +UUID courseId
+        +String certificateNumber
+        +String pdfUrl
+        +String verificationUrl
+        +DateTime issuedAt
+        +verify() Boolean
+        +generatePdf() String
+    }
 
-class Inventory {
-    - UUID id
-    - UUID storeId
-    - UUID productId
-    - int availableQuantity
-    - int reservedQuantity
-    - DateTime lastUpdated
-    
-    + getAvailableQuantity(): int
-    + reserve(quantity, orderId): boolean
-    + release(orderId): void
-    + updateQuantity(quantity): void
-    + checkAvailability(quantity): boolean
-}
-
-class InventoryReservation {
-    - UUID id
-    - UUID orderId
-    - UUID storeId
-    - UUID productId
-    - int quantity
-    - DateTime expiresAt
-    - ReservationStatus status
-    
-    + isValid(): boolean
-    + expire(): void
-}
+    Enrollment "1" --> "1" CourseProgress
+    User "1" --> "*" Enrollment
+    User "1" --> "*" LessonProgress
+    User "1" --> "*" UserAchievement
+    UserAchievement "*" --> "1" Achievement
+    User "1" --> "*" Certificate
+    Certificate "*" --> "1" Course
 ```
 
-### Store Domain
+### AI & Interaction Classes
 
-```java
-class DarkStore {
-    - UUID id
-    - String name
-    - Address location
-    - BigDecimal deliveryRadiusKm
-    - StoreStatus status
-    - StoreCapacity capacity
-    - DateTime createdAt
+```mermaid
+classDiagram
+    class AIInteraction {
+        +UUID id
+        +UUID userId
+        +UUID sessionId
+        +InteractionType type
+        +String inputText
+        +String outputText
+        +JSON context
+        +Integer feedbackRating
+        +DateTime createdAt
+        +logFeedback(rating) void
+    }
     
-    + isWithinRadius(customerLocation): boolean
-    + getCapacityStatus(): CapacityStatus
-    + updateCapacity(): void
-}
+    class ContentEmbedding {
+        +UUID id
+        +UUID contentId
+        +ContentType contentType
+        +Integer chunkIndex
+        +Vector embedding
+        +String chunkText
+        +searchSimilar(query, limit) List
+    }
+    
+    class Recommendation {
+        +UUID id
+        +UUID userId
+        +UUID courseId
+        +RecommendationType type
+        +Float score
+        +String reason
+        +DateTime createdAt
+    }
+    
+    class LearningPath {
+        +UUID id
+        +UUID userId
+        +String name
+        +List~UUID~ courseIds
+        +PathStatus status
+        +DateTime createdAt
+        +getCourses() List~Course~
+        +getProgress() Integer
+    }
 
-class StoreCapacity {
-    - UUID storeId
-    - int currentPendingOrders
-    - int maxCapacity
-    - int averageFulfillmentTimeMinutes
-    - DateTime lastUpdated
-    
-    + canAcceptOrder(): boolean
-    + calculateFulfillmentTime(items): int
-    + updatePendingOrders(count): void
-}
+    User "1" --> "*" AIInteraction
+    User "1" --> "*" Recommendation
+    User "1" --> "*" LearningPath
 ```
 
-### Delivery Domain
+### Assessment Classes
 
-```java
-class DeliveryPartner {
-    - UUID id
-    - String name
-    - String phone
-    - VehicleType vehicleType
-    - Location currentLocation
-    - boolean isAvailable
-    - int currentOrdersCount
-    - int maxConcurrentOrders
-    - BigDecimal rating
-    - int totalDeliveries
+```mermaid
+classDiagram
+    class Assessment {
+        +UUID id
+        +UUID lessonId
+        +String title
+        +AssessmentType type
+        +Integer passingScore
+        +Integer timeLimitMinutes
+        +Boolean isProctored
+        +List~Question~ questions
+        +getTotalPoints() Integer
+    }
     
-    + updateLocation(location): void
-    + setAvailability(available): void
-    + canAcceptOrder(): boolean
-    + calculateScore(order): BigDecimal
-}
-
-class DeliveryAssignment {
-    - UUID id
-    - UUID orderId
-    - UUID partnerId
-    - DateTime assignedAt
-    - DateTime pickedUpAt
-    - DateTime deliveredAt
-    - DeliveryStatus status
+    class Question {
+        +UUID id
+        +UUID assessmentId
+        +QuestionType type
+        +String content
+        +List~String~ options
+        +String correctAnswer
+        +Integer points
+        +String explanation
+    }
     
-    + assign(partner): void
-    + confirmPickup(): void
-    + confirmDelivery(): void
-}
-
-class Location {
-    - BigDecimal latitude
-    - BigDecimal longitude
-    - DateTime timestamp
+    class AssessmentAttempt {
+        +UUID id
+        +UUID userId
+        +UUID assessmentId
+        +Integer score
+        +Integer totalPoints
+        +AttemptStatus status
+        +DateTime startedAt
+        +DateTime completedAt
+        +List~Answer~ answers
+        +isPassing() Boolean
+    }
     
-    + calculateDistance(other): BigDecimal
-    + isValid(): boolean
-}
+    class Answer {
+        +UUID id
+        +UUID attemptId
+        +UUID questionId
+        +String response
+        +Boolean isCorrect
+        +Integer pointsEarned
+    }
 
-class Route {
-    - Location start
-    - Location end
-    - List<Location> waypoints
-    - BigDecimal distanceKm
-    - int estimatedTimeMinutes
-    
-    + optimize(): Route
-    + calculateETA(): int
-}
-```
-
-### Payment Domain
-
-```java
-class Payment {
-    - UUID id
-    - UUID orderId
-    - PaymentMethod method
-    - BigDecimal amount
-    - PaymentStatus status
-    - String transactionId
-    - DateTime processedAt
-    
-    + process(): PaymentResult
-    + verify(): boolean
-    + refund(): Refund
-}
-
-class Refund {
-    - UUID id
-    - UUID paymentId
-    - UUID orderId
-    - BigDecimal amount
-    - RefundStatus status
-    - DateTime processedAt
-    
-    + process(): RefundResult
-    + verify(): boolean
-}
-
-enum PaymentMethod {
-    UPI
-    CREDIT_CARD
-    DEBIT_CARD
-    WALLET
-    COD
-}
-
-enum PaymentStatus {
-    PENDING
-    PROCESSING
-    SUCCESS
-    FAILED
-    REFUNDED
-}
+    Assessment "1" --> "*" Question
+    AssessmentAttempt "*" --> "1" Assessment
+    AssessmentAttempt "*" --> "1" User
+    AssessmentAttempt "1" --> "*" Answer
 ```
 
 ---
 
 ## Service Layer Classes
 
-### Order Service
+### Core Services
 
-```java
-class OrderService {
-    - OrderRepository orderRepository
-    - InventoryService inventoryService
-    - PaymentService paymentService
-    - NotificationService notificationService
+```mermaid
+classDiagram
+    class UserService {
+        -UserRepository userRepo
+        -AuthService authService
+        +register(dto) User
+        +authenticate(email, password) AuthToken
+        +getProfile(userId) UserProfile
+        +updateProfile(userId, dto) User
+        +changePassword(userId, dto) void
+        +deleteAccount(userId) void
+    }
     
-    + createOrder(userId, items, address): Order
-    + getOrder(orderId): Order
-    + cancelOrder(orderId, reason): boolean
-    + updateOrderStatus(orderId, status): void
-    + getOrderHistory(userId): List<Order>
-}
+    class CourseService {
+        -CourseRepository courseRepo
+        -EnrollmentService enrollmentService
+        +getCatalog(filters) Page~Course~
+        +getCourse(courseId) CourseDetail
+        +searchCourses(query) List~Course~
+        +getRecommendations(userId) List~Course~
+    }
+    
+    class ContentService {
+        -VideoRepository videoRepo
+        -CDNService cdnService
+        -TranscodingService transcoder
+        +uploadVideo(file, metadata) Video
+        +getStreamingUrl(videoId, quality) String
+        +processVideo(videoId) Job
+        +generateThumbnails(videoId) List~String~
+    }
+    
+    class LabService {
+        -LabRepository labRepo
+        -ResourceManager resourceManager
+        -SessionManager sessionManager
+        +startSession(userId, labId) LabSession
+        +getSession(sessionId) LabSession
+        +resetSession(sessionId) LabSession
+        +extendSession(sessionId, minutes) void
+        +terminateSession(sessionId) void
+        +validateCompletion(sessionId) ValidationResult
+    }
+    
+    class AIService {
+        -LLMClient llmClient
+        -VectorDB vectorDb
+        -ContextBuilder contextBuilder
+        +generateSummary(videoId) Summary
+        +getHint(sessionId, context) Hint
+        +answerQuestion(query, context) Response
+        +getRecommendations(userId) List~Course~
+    }
+    
+    class ProgressService {
+        -ProgressRepository progressRepo
+        -EventPublisher eventPublisher
+        +updateVideoProgress(userId, videoId, position) void
+        +updateLabProgress(userId, labId, status) void
+        +getCourseProgress(userId, courseId) CourseProgress
+        +getDashboard(userId) ProgressDashboard
+        +checkCompletionAndCertify(userId, courseId) Certificate
+    }
 
-class OrderRepository {
-    + save(order): Order
-    + findById(id): Order
-    + findByUserId(userId): List<Order>
-    + findByStatus(status): List<Order>
-    + update(order): Order
-}
-
-class OrderValidator {
-    + validateOrder(order): ValidationResult
-    + checkInventoryAvailability(order): boolean
-    + validateAddress(address): boolean
-}
-
-class OrderStateMachine {
-    + transition(order, newStatus): boolean
-    + getValidTransitions(currentStatus): List<OrderStatus>
-    + canTransition(from, to): boolean
-}
+    CourseService --> ContentService
+    LabService --> ProgressService
+    AIService --> ContentService
 ```
 
-### Inventory Service
+### Supporting Services
 
-```java
-class InventoryService {
-    - InventoryRepository inventoryRepository
-    - InventoryCache cache
-    - EventPublisher eventPublisher
+```mermaid
+classDiagram
+    class EnrollmentService {
+        -EnrollmentRepository enrollmentRepo
+        -PaymentService paymentService
+        +enroll(userId, courseId) Enrollment
+        +unenroll(userId, courseId) void
+        +getEnrollments(userId) List~Enrollment~
+        +isEnrolled(userId, courseId) Boolean
+    }
     
-    + getInventory(storeId, productId): Inventory
-    + reserveInventory(orderId, items): boolean
-    + releaseInventory(orderId): void
-    + updateInventory(storeId, productId, quantity): void
-    + checkAvailability(storeId, productId, quantity): boolean
-}
+    class PaymentService {
+        -PaymentGateway gateway
+        -SubscriptionRepository subRepo
+        +createCheckout(userId, plan) CheckoutSession
+        +processPayment(sessionId) Payment
+        +cancelSubscription(userId) void
+        +getSubscription(userId) Subscription
+    }
+    
+    class NotificationService {
+        -EmailProvider emailProvider
+        -PushProvider pushProvider
+        +sendEnrollmentConfirmation(userId, courseId) void
+        +sendCourseReminder(userId) void
+        +sendCertificateNotification(userId, certId) void
+        +sendLabExpirationWarning(sessionId) void
+    }
+    
+    class AnalyticsService {
+        -AnalyticsRepository analyticsRepo
+        +trackEvent(event) void
+        +getInstructorAnalytics(instructorId) InstructorStats
+        +getLearnerAnalytics(userId) LearnerStats
+        +getContentAnalytics(courseId) ContentStats
+    }
+    
+    class CertificateService {
+        -CertificateRepository certRepo
+        -PDFGenerator pdfGenerator
+        -StorageService storage
+        +issueCertificate(userId, courseId) Certificate
+        +getCertificate(certId) Certificate
+        +verifyCertificate(certNumber) VerificationResult
+    }
+    
+    class SearchService {
+        -ElasticsearchClient esClient
+        +search(query, filters) SearchResults
+        +indexCourse(course) void
+        +indexLesson(lesson) void
+        +suggest(partialQuery) List~String~
+    }
 
-class InventoryRepository {
-    + save(inventory): Inventory
-    + findByStoreAndProduct(storeId, productId): Inventory
-    + findByStore(storeId): List<Inventory>
-    + update(inventory): Inventory
-}
-
-class StockReserver {
-    + reserve(storeId, productId, quantity, orderId): Reservation
-    + release(reservationId): void
-    + checkAvailability(storeId, productId): int
-    + validateReservation(reservation): boolean
-}
-
-class InventorySyncService {
-    + syncInventory(storeId): void
-    + publishInventoryUpdate(update): void
-    + reconcileInventory(storeId): ReconciliationResult
-}
+    EnrollmentService --> PaymentService
+    ProgressService --> CertificateService
 ```
 
-### Fulfillment Service
+---
 
-```java
-class FulfillmentService {
-    - StoreSelector storeSelector
-    - SLAValidator slaValidator
-    - EventPublisher eventPublisher
+## Infrastructure Layer Classes
+
+```mermaid
+classDiagram
+    class LabProvisioner {
+        -KubernetesClient k8sClient
+        -ContainerPool containerPool
+        +provision(template) Container
+        +deprovision(containerId) void
+        +getStatus(containerId) ContainerStatus
+    }
     
-    + assignStore(order): DarkStore
-    + calculateFulfillmentTime(storeId, items): int
-    + checkStoreCapacity(storeId): CapacityStatus
-    + validateSLA(order): boolean
-}
-
-class StoreSelector {
-    - LocationService locationService
-    - InventoryService inventoryService
-    - StoreCapacityService capacityService
+    class ContainerPool {
+        -Map~TechStack, Queue~ warmContainers
+        +acquire(techStack) Container
+        +release(container) void
+        +warmUp(techStack, count) void
+        +getPoolSize(techStack) Integer
+    }
     
-    + selectBestStore(order): DarkStore
-    + rankStores(order): List<DarkStore>
-    + calculateScore(store, order): BigDecimal
-}
-
-class FulfillmentEngine {
-    + assignStore(order): DarkStore
-    + reRouteOrder(order, reason): DarkStore
-    + optimizeAssignment(orders): Map<Order, DarkStore>
-}
-
-class SLAValidator {
-    + validateSLA(order): boolean
-    + calculateRemainingTime(order): int
-    + isAtRisk(order): boolean
-    + getSLACompliance(orders): ComplianceMetrics
-}
-```
-
-### Delivery Service
-
-```java
-class DeliveryService {
-    - PartnerMatcher partnerMatcher
-    - RouteOptimizer routeOptimizer
-    - TrackingService trackingService
+    class TerminalService {
+        -WebSocketServer wsServer
+        +connect(sessionId, userId) WebSocketConnection
+        +sendInput(sessionId, input) void
+        +receiveOutput(sessionId) Stream~Output~
+        +disconnect(sessionId) void
+    }
     
-    + assignPartner(order): DeliveryPartner
-    + reassignPartner(orderId, reason): DeliveryPartner
-    + optimizeRoute(orders): Route
-    + trackDelivery(orderId): DeliveryStatus
-}
-
-class PartnerMatcher {
-    - LocationService locationService
-    - PartnerRepository partnerRepository
+    class CDNService {
+        -CloudFrontClient cfClient
+        +getSignedUrl(path, expiry) String
+        +invalidateCache(paths) void
+        +uploadFile(file, path) String
+    }
     
-    + findAvailablePartners(location, radius): List<DeliveryPartner>
-    + assignPartner(order): DeliveryPartner
-    + calculateAssignmentScore(partner, order): BigDecimal
-    + rankPartners(partners, order): List<DeliveryPartner>
-}
-
-class RouteOptimizer {
-    - MapsService mapsService
+    class TranscodingService {
+        -FFmpegRunner ffmpeg
+        -JobQueue jobQueue
+        +transcode(videoId, formats) Job
+        +extractAudio(videoId) String
+        +generateSubtitles(videoId) List~Subtitle~
+    }
     
-    + optimizeRoute(start, end): Route
-    + calculateETA(pickup, delivery): int
-    + optimizeMultiStopRoute(orders): Route
-    + getOptimalRoute(start, end): Route
-}
-
-class AssignmentEngine {
-    + assign(order): DeliveryAssignment
-    + reassign(orderId, reason): DeliveryAssignment
-    + release(orderId): void
-    + updateAssignmentStatus(assignmentId, status): void
-}
-```
-
-### Location Service
-
-```java
-class LocationService {
-    - LocationRepository locationRepository
-    - GeocodingService geocodingService
-    - MapsService mapsService
+    class LLMClient {
+        -OpenAIClient openai
+        -PromptBuilder promptBuilder
+        +complete(prompt, options) Completion
+        +embed(text) Vector
+        +stream(prompt, callback) void
+    }
     
-    + resolveLocation(coordinates): Location
-    + validateLocation(location): boolean
-    + getDeliveryAddress(userId): Address
-    + findNearestStores(location, radius): List<DarkStore>
-    + calculateDistance(location1, location2): BigDecimal
-}
+    class VectorDB {
+        -PineconeClient pinecone
+        +upsert(id, vector, metadata) void
+        +query(vector, topK, filter) List~Match~
+        +delete(id) void
+    }
 
-class LocationResolver {
-    + resolveFromGPS(coordinates): Location
-    + resolveFromAddress(address): Location
-    + validateCoordinates(lat, lng): boolean
-}
-
-class StoreSelector {
-    + findStoresInRadius(location, radius): List<DarkStore>
-    + selectOptimalStore(location, items): DarkStore
-    + calculateDistance(location1, location2): BigDecimal
-}
-
-class GeofenceManager {
-    + isWithinGeofence(location, storeId): boolean
-    + getGeofenceRadius(storeId): BigDecimal
-    + validateDeliveryAddress(address, storeId): boolean
-}
-```
-
-### Payment Service
-
-```java
-class PaymentService {
-    - PaymentGatewayAdapter gatewayAdapter
-    - PaymentRepository paymentRepository
-    - RefundService refundService
-    
-    + processPayment(orderId, method, details): Payment
-    + verifyPayment(transactionId): boolean
-    + processRefund(paymentId, amount): Refund
-    + getPaymentHistory(orderId): List<Payment>
-}
-
-class PaymentGatewayAdapter {
-    + charge(amount, method, details): PaymentResult
-    + refund(transactionId, amount): RefundResult
-    + verify(transactionId): PaymentStatus
-}
-
-class PaymentGatewayFactory {
-    + createGateway(type): PaymentGatewayAdapter
-}
-
-class RefundProcessor {
-    + processRefund(paymentId, amount): Refund
-    + verifyRefund(refundId): boolean
-    + getRefundStatus(refundId): RefundStatus
-}
+    LabProvisioner --> ContainerPool
+    AIService --> LLMClient
+    AIService --> VectorDB
 ```
 
 ---
 
 ## Complete Class Diagram
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Domain Layer                             │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  Order ──────┐                                                  │
-│    │         │                                                  │
-│    │         └─── OrderItem                                     │
-│    │                                                             │
-│    ├─── OrderStatus (enum)                                      │
-│    │                                                             │
-│    └─── Address                                                 │
-│                                                                 │
-│  Product ────┐                                                  │
-│    │         │                                                  │
-│    │         └─── Inventory                                     │
-│    │                │                                           │
-│    │                └─── InventoryReservation                   │
-│                                                                 │
-│  DarkStore ──┐                                                  │
-│    │         │                                                  │
-│    │         └─── StoreCapacity                                 │
-│                                                                 │
-│  DeliveryPartner ──┐                                            │
-│    │               │                                            │
-│    │               └─── DeliveryAssignment                      │
-│    │                      │                                      │
-│    │                      └─── Location                         │
-│    │                             │                              │
-│    │                             └─── Route                     │
-│                                                                 │
-│  Payment ────┐                                                  │
-│    │         │                                                  │
-│    │         └─── Refund                                        │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────┐
-│                        Service Layer                            │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  OrderService ──────┐                                           │
-│    │                 │                                           │
-│    ├─── OrderRepository                                          │
-│    ├─── OrderValidator                                           │
-│    └─── OrderStateMachine                                        │
-│                                                                 │
-│  InventoryService ──┐                                           │
-│    │                 │                                           │
-│    ├─── InventoryRepository                                      │
-│    ├─── StockReserver                                            │
-│    └─── InventorySyncService                                     │
-│                                                                 │
-│  FulfillmentService ─┐                                           │
-│    │                 │                                           │
-│    ├─── StoreSelector                                            │
-│    ├─── FulfillmentEngine                                        │
-│    └─── SLAValidator                                             │
-│                                                                 │
-│  DeliveryService ────┐                                           │
-│    │                 │                                           │
-│    ├─── PartnerMatcher                                           │
-│    ├─── RouteOptimizer                                           │
-│    └─── AssignmentEngine                                         │
-│                                                                 │
-│  LocationService ────┐                                           │
-│    │                 │                                           │
-│    ├─── LocationResolver                                         │
-│    ├─── StoreSelector                                            │
-│    └─── GeofenceManager                                          │
-│                                                                 │
-│  PaymentService ─────┐                                           │
-│    │                 │                                           │
-│    ├─── PaymentGatewayAdapter                                    │
-│    ├─── PaymentGatewayFactory                                    │
-│    └─── RefundProcessor                                          │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────┐
-│                        Infrastructure Layer                     │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  Repository Layer                                               │
-│  ├─── OrderRepository (implements IOrderRepository)            │
-│  ├─── InventoryRepository (implements IInventoryRepository)     │
-│  ├─── ProductRepository (implements IProductRepository)         │
-│  └─── PartnerRepository (implements IPartnerRepository)        │
-│                                                                 │
-│  External Services                                              │
-│  ├─── MapsService (Google Maps API)                            │
-│  ├─── PaymentGateway (Razorpay, Stripe)                        │
-│  ├─── NotificationService (SMS, Push, Email)                  │
-│  └─── GeocodingService (Address to Coordinates)                │
-│                                                                 │
-│  Cache Layer                                                    │
-│  ├─── InventoryCache (Redis)                                   │
-│  ├─── LocationCache (Redis)                                     │
-│  └─── ProductCache (Redis)                                      │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+classDiagram
+    %% Domain Layer
+    class User {
+        +UUID id
+        +String email
+        +UserRole role
+        +SubscriptionTier subscription
+    }
+    
+    class Course {
+        +UUID id
+        +String title
+        +UUID instructorId
+        +CourseStatus status
+    }
+    
+    class Module {
+        +UUID id
+        +UUID courseId
+        +Integer orderIndex
+    }
+    
+    class Lesson {
+        +UUID id
+        +UUID moduleId
+        +LessonType type
+    }
+    
+    class Video {
+        +UUID id
+        +UUID lessonId
+        +String hlsUrl
+    }
+    
+    class Lab {
+        +UUID id
+        +UUID lessonId
+        +UUID templateId
+    }
+    
+    class LabSession {
+        +UUID id
+        +UUID userId
+        +UUID labId
+        +SessionStatus status
+    }
+    
+    class Enrollment {
+        +UUID id
+        +UUID userId
+        +UUID courseId
+    }
+    
+    class Certificate {
+        +UUID id
+        +UUID userId
+        +UUID courseId
+    }
+    
+    %% Relationships
+    User "1" --> "*" Enrollment
+    User "1" --> "*" LabSession
+    User "1" --> "*" Certificate
+    Course "1" --> "*" Module
+    Course "1" --> "*" Enrollment
+    Module "1" --> "*" Lesson
+    Lesson "1" --> "0..1" Video
+    Lesson "1" --> "0..1" Lab
+    Lab "1" --> "*" LabSession
+    
+    %% Service Layer
+    class CourseService {
+        +getCatalog()
+        +getCourse()
+    }
+    
+    class LabService {
+        +startSession()
+        +validateCompletion()
+    }
+    
+    class AIService {
+        +generateSummary()
+        +getHint()
+    }
+    
+    class ProgressService {
+        +updateProgress()
+        +getDashboard()
+    }
+    
+    CourseService --> Course
+    LabService --> Lab
+    LabService --> LabSession
+    ProgressService --> Enrollment
 ```
 
 ---
 
 ## Class Relationships
 
-### Inheritance
-- `OrderItem` extends `BaseEntity`
-- `InventoryReservation` extends `BaseEntity`
-- `DeliveryAssignment` extends `BaseEntity`
-- `Refund` extends `BaseEntity`
+### Relationship Types
 
-### Composition
-- `Order` contains `List<OrderItem>`
-- `Order` contains `Address`
-- `DarkStore` contains `StoreCapacity`
-- `DeliveryAssignment` contains `Location` and `Route`
-- `Payment` may contain `Refund`
+| Relationship | Description | Example |
+|--------------|-------------|---------|
+| **Inheritance** | Is-a relationship | VideoLesson → Lesson |
+| **Composition** | Strong ownership, lifecycle dependent | Course → Module → Lesson |
+| **Aggregation** | Weak ownership, independent lifecycle | User → Enrollment |
+| **Association** | Uses / interacts with | LabService → LabSession |
+| **Dependency** | Temporary usage | AIService → LLMClient |
 
-### Aggregation
-- `OrderService` uses `OrderRepository`
-- `InventoryService` uses `InventoryRepository`
-- `FulfillmentService` uses `StoreSelector`
-- `DeliveryService` uses `PartnerMatcher`
+### Key Relationships
 
-### Association
-- `Order` → `DarkStore` (assigned to)
-- `Order` → `DeliveryPartner` (assigned to)
-- `Order` → `Payment` (has payment)
-- `Inventory` → `Product` (belongs to)
-- `Inventory` → `DarkStore` (belongs to)
-- `DeliveryAssignment` → `Order` (assigned to)
-- `DeliveryAssignment` → `DeliveryPartner` (assigned to)
-
-### Dependency
-- `OrderService` depends on `InventoryService`
-- `OrderService` depends on `PaymentService`
-- `FulfillmentService` depends on `LocationService`
-- `DeliveryService` depends on `MapsService`
-- `PaymentService` depends on `PaymentGatewayAdapter`
+1. **Course → Module → Lesson**: Composition - deleting a course deletes all modules and lessons
+2. **User → Enrollment**: Aggregation - enrollments reference users but have independent lifecycle
+3. **Lab → LabSession**: One lab template can spawn many sessions
+4. **LabService → LabProvisioner**: Dependency for infrastructure operations
+5. **AIService → VectorDB**: Dependency for semantic search
 
 ---
 
-**Last Updated**: January 2025
+**Last Updated**: January 2026
 **Version**: 1.0
 **Status**: Design Complete, Implementation Pending

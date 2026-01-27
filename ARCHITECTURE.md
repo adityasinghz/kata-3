@@ -1,6 +1,6 @@
-# FlashKart Quick Commerce - Architecture Documentation
+# LearnCraft - Architecture Documentation
 
-> **⚠️ Core Requirements**: This architecture is designed around 9 critical requirements. See [KEY_REQUIREMENTS.md](./KEY_REQUIREMENTS.md) for the complete reference.
+> **⚠️ Core Requirements**: This architecture is designed around 8 critical requirements. See [KEY_REQUIREMENTS.md](./KEY_REQUIREMENTS.md) for the complete reference.
 
 ## Table of Contents
 1. [High-Level Design (HLD)](#high-level-design-hld)
@@ -19,16 +19,16 @@
 
 ### System Overview
 
-FlashKart is a **cloud-native quick commerce platform** designed to deliver groceries, daily essentials, and snacks within 10-20 minutes through a network of dark stores (micro-fulfillment centers) and dynamic delivery partner assignment.
+LearnCraft is a **cloud-native online learning platform** designed to deliver video tutorials combined with browser-based hands-on labs, powered by AI-driven learning assistance and personalized recommendations.
 
 ### Architecture Principles
 
 1. **Cloud-Native**: Microservices architecture on Kubernetes for scalability
-2. **Event-Driven**: Asynchronous processing for order fulfillment and inventory sync
-3. **Real-Time**: Live inventory, tracking, and partner assignment
-4. **Resilient**: Circuit breakers, retry mechanisms, graceful degradation
-5. **Scalable**: Horizontal scaling to handle peak traffic and city expansion
-6. **Observable**: Comprehensive monitoring, logging, and tracing
+2. **Event-Driven**: Asynchronous processing for lab provisioning and analytics
+3. **Real-Time**: WebSocket for live lab interaction and progress updates
+4. **AI-Powered**: LLM integration for learning assistance and content generation
+5. **Resilient**: Circuit breakers, retry mechanisms, graceful degradation
+6. **Secure**: Isolated lab environments, encrypted data, RBAC
 
 ### System Architecture Diagram
 
@@ -37,9 +37,8 @@ FlashKart is a **cloud-native quick commerce platform** designed to deliver groc
 │                        Client Layer                              │
 ├─────────────────────────────────────────────────────────────────┤
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
-│  │ Customer App │  │ Dark Store   │  │ Delivery     │         │
-│  │ (Mobile/Web) │  │ Operations   │  │ Partner App  │         │
-│  │              │  │ (Tablet/Web) │  │ (Mobile)     │         │
+│  │ Learner App  │  │ Instructor   │  │ Admin        │         │
+│  │ (Web/Mobile) │  │ Portal       │  │ Dashboard    │         │
 │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘         │
 │         │                  │                  │                  │
 └─────────┼──────────────────┼──────────────────┼─────────────────┘
@@ -56,26 +55,26 @@ FlashKart is a **cloud-native quick commerce platform** designed to deliver groc
 │  │              Microservices Layer                   │         │
 │  ├───────────────────────────────────────────────────┤         │
 │  │ ┌────────────┐ ┌────────────┐ ┌────────────┐    │         │
-│  │ │ Location   │ │ Catalog    │ │ Inventory  │    │         │
+│  │ │ User       │ │ Course     │ │ Content    │    │         │
 │  │ │ Service    │ │ Service    │ │ Service    │    │         │
 │  │ └────────────┘ └────────────┘ └────────────┘    │         │
 │  │ ┌────────────┐ ┌────────────┐ ┌────────────┐    │         │
-│  │ │ Order      │ │ Fulfillment│ │ Delivery   │    │         │
+│  │ │ Lab        │ │ AI         │ │ Progress   │    │         │
 │  │ │ Service    │ │ Service    │ │ Service    │    │         │
 │  │ └────────────┘ └────────────┘ └────────────┘    │         │
 │  │ ┌────────────┐ ┌────────────┐ ┌────────────┐    │         │
-│  │ │ Payment    │ │ Partner    │ │ Tracking   │    │         │
-│  │ │ Service    │ │ Management │ │ Service    │    │         │
+│  │ │ Assessment │ │ Analytics  │ │ Notification│    │         │
+│  │ │ Service    │ │ Service    │ │ Service    │    │         │
 │  │ └────────────┘ └────────────┘ └────────────┘    │         │
 │  │ ┌────────────┐ ┌────────────┐ ┌────────────┐    │         │
-│  │ │ Notification│ │ Pricing   │ │ Analytics  │    │         │
+│  │ │ Payment    │ │ Certificate│ │ Search     │    │         │
 │  │ │ Service    │ │ Service    │ │ Service    │    │         │
 │  │ └────────────┘ └────────────┘ └────────────┘    │         │
 │  └──────┬──────────────────┬──────────────────┬──────┘         │
 │         │                  │                  │                  │
 │  ┌──────▼──────────────────▼──────────────────▼──────┐         │
 │  │         Message Queue (Event Bus)                  │         │
-│  │    (Kafka/RabbitMQ for async communication)       │         │
+│  │       (Kafka for async communication)             │         │
 │  └──────┬──────────────────┬──────────────────┬──────┘         │
 │         │                  │                  │                  │
 │  ┌──────▼──────────────────▼──────────────────▼──────┐         │
@@ -83,9 +82,21 @@ FlashKart is a **cloud-native quick commerce platform** designed to deliver groc
 │  ├───────────────────────────────────────────────────┤         │
 │  │ ┌────────────┐ ┌────────────┐ ┌────────────┐    │         │
 │  │ │ Primary    │ │ Cache      │ │ Search     │    │         │
-│  │ │ Database   │ │ (Redis)    │ │ (Elasticsearch)│ │         │
+│  │ │ Database   │ │ (Redis)    │ │ (Elastic)  │    │         │
 │  │ │ (PostgreSQL│ │            │ │            │    │         │
-│  │ │ /MongoDB)  │ │            │ │            │    │         │
+│  │ └────────────┘ └────────────┘ └────────────┘    │         │
+│  │ ┌────────────┐ ┌────────────┐                    │         │
+│  │ │ Analytics  │ │ Vector DB  │                    │         │
+│  │ │ (ClickHouse│ │ (Pinecone) │                    │         │
+│  │ └────────────┘ └────────────┘                    │         │
+│  └───────────────────────────────────────────────────┘         │
+│                                                                  │
+│  ┌───────────────────────────────────────────────────┐         │
+│  │         Lab Infrastructure Layer                   │         │
+│  ├───────────────────────────────────────────────────┤         │
+│  │ ┌────────────┐ ┌────────────┐ ┌────────────┐    │         │
+│  │ │ Kubernetes │ │ Container  │ │ Resource   │    │         │
+│  │ │ Cluster    │ │ Registry   │ │ Manager    │    │         │
 │  │ └────────────┘ └────────────┘ └────────────┘    │         │
 │  └───────────────────────────────────────────────────┘         │
 │                                                                  │
@@ -93,164 +104,137 @@ FlashKart is a **cloud-native quick commerce platform** designed to deliver groc
 │  │         External Services Integration              │         │
 │  ├───────────────────────────────────────────────────┤         │
 │  │ ┌────────────┐ ┌────────────┐ ┌────────────┐    │         │
-│  │ │ Payment    │ │ Maps API   │ │ SMS/Push   │    │         │
-│  │ │ Gateways   │ │ (Google)   │ │ Services   │    │         │
+│  │ │ CDN        │ │ AI/LLM     │ │ Payment    │    │         │
+│  │ │ (CloudFront│ │ (OpenAI)   │ │ Gateway    │    │         │
 │  │ └────────────┘ └────────────┘ └────────────┘    │         │
+│  │ ┌────────────┐ ┌────────────┐                    │         │
+│  │ │ Email/SMS  │ │ Identity   │                    │         │
+│  │ │ Provider   │ │ Provider   │                    │         │
+│  │ └────────────┘ └────────────┘                    │         │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ### Key Components
 
-#### 1. **Customer Application (Mobile/Web)**
-- **Purpose**: Customer-facing interface for ordering
-- **Technology**: React Native / Flutter (Mobile), React (Web)
+#### 1. **Learner Application (Web/Mobile)**
+- **Purpose**: Primary interface for learners
+- **Technology**: React (Web), React Native (Mobile)
 - **Features**: 
-  - Location-based product discovery
-  - Real-time inventory visibility
-  - Fast checkout (minimal steps)
-  - Order tracking with live updates
-  - Payment integration
-  - Order history
+  - Course browsing and enrollment
+  - Video player with progress tracking
+  - Browser-based lab terminal
+  - AI chat assistant
+  - Progress dashboard
 
-#### 2. **Dark Store Operations Interface (Tablet/Web)**
-- **Purpose**: Dark store staff interface for order fulfillment
-- **Technology**: React (Web), React Native (Tablet)
+#### 2. **Instructor Portal**
+- **Purpose**: Content creation and management
+- **Technology**: React (Web)
 - **Features**:
-  - Order queue management
-  - Pick & pack workflows
-  - Inventory updates
-  - Order status updates
-  - Barcode scanning
+  - Course builder and editor
+  - Video upload and management
+  - Lab template creation
+  - Learner analytics
+  - Revenue tracking
 
-#### 3. **Delivery Partner Application (Mobile)**
-- **Purpose**: Delivery partner interface for order delivery
-- **Technology**: React Native / Flutter
+#### 3. **Admin Dashboard**
+- **Purpose**: Platform administration
+- **Technology**: React (Web)
 - **Features**:
-  - Order assignment notifications
-  - Route navigation
-  - Order pickup confirmation
-  - Delivery confirmation
-  - Earnings tracking
+  - User management
+  - Content moderation
+  - System monitoring
+  - Analytics and reporting
+  - Configuration management
 
-#### 4. **Location Service**
-- **Purpose**: Location-aware store selection and routing
-- **Technology**: Node.js / Java / Go
+#### 4. **User Service**
+- **Purpose**: User lifecycle management
+- **Technology**: Node.js / Go
 - **Features**:
-  - GPS location detection
-  - Geofencing for dark stores
-  - Store proximity calculation
-  - Delivery radius validation
-  - Multi-city support
+  - Authentication (OAuth 2.0, SSO)
+  - User profiles
+  - Role management
+  - Subscription management
+  - Preferences
 
-#### 5. **Catalog Service**
-- **Purpose**: Product catalog management
-- **Technology**: Node.js / Java
+#### 5. **Course Service**
+- **Purpose**: Course structure and catalog management
+- **Technology**: Node.js / Go
 - **Features**:
-  - Product CRUD operations
-  - Category management
-  - Search and filtering
-  - Product recommendations
-  - Multi-city catalog support
+  - Course CRUD operations
+  - Module and lesson management
+  - Catalog search and filtering
+  - Course recommendations
+  - Enrollment management
 
-#### 6. **Inventory Service**
-- **Purpose**: Real-time inventory management per dark store
-- **Technology**: Node.js / Java / Go
+#### 6. **Content Service**
+- **Purpose**: Media content management
+- **Technology**: Node.js / Go
 - **Features**:
-  - Real-time inventory sync
-  - Inventory reservation (prevent overselling)
-  - Low stock alerts
-  - Inventory reconciliation
-  - Multi-channel sync
+  - Video upload and transcoding
+  - CDN integration
+  - Streaming URL generation
+  - DRM protection
+  - Subtitle management
 
-#### 7. **Order Service**
-- **Purpose**: Order lifecycle management
-- **Technology**: Node.js / Java
+#### 7. **Lab Service**
+- **Purpose**: Lab environment orchestration
+- **Technology**: Go
 - **Features**:
-  - Order creation
-  - Order state management
-  - Order cancellation
-  - Order history
-  - Order search
+  - Environment provisioning
+  - Session management
+  - Resource allocation
+  - Environment reset
+  - Multi-stack support
 
-#### 8. **Fulfillment Service**
-- **Purpose**: Intelligent order fulfillment and store assignment
-- **Technology**: Node.js / Java / Python (ML models)
+#### 8. **AI Service**
+- **Purpose**: AI-powered learning assistance
+- **Technology**: Python / Node.js
 - **Features**:
-  - Store selection algorithm
-  - Fulfillment capacity management
-  - SLA tracking
-  - Order routing
-  - Peak load handling
+  - Video summarization
+  - Contextual hints
+  - Q&A assistance
+  - Recommendations
+  - Content generation
 
-#### 9. **Delivery Service**
-- **Purpose**: Delivery partner assignment and management
-- **Technology**: Node.js / Java / Python (ML models)
+#### 9. **Progress Service**
+- **Purpose**: Learning progress tracking
+- **Technology**: Node.js / Go
 - **Features**:
-  - Partner onboarding
-  - Real-time availability tracking
-  - Dynamic assignment algorithm
-  - Route optimization
-  - Re-assignment logic
+  - Video progress tracking
+  - Lab completion tracking
+  - Course progress aggregation
+  - Streak tracking
+  - Achievement management
 
-#### 10. **Payment Service**
-- **Purpose**: Payment processing and refund management
-- **Technology**: Node.js / Java
+#### 10. **Assessment Service**
+- **Purpose**: Quizzes and skill assessments
+- **Technology**: Node.js / Go
 - **Features**:
-  - Multiple payment modes (UPI, Cards, Wallets, COD)
-  - Payment gateway integration
-  - Refund processing
-  - Transaction history
-  - Payment security (PCI-DSS)
+  - Quiz creation and delivery
+  - Automated grading
+  - Skill scoring
+  - Certification exams
+  - Analytics
 
-#### 11. **Partner Management Service**
-- **Purpose**: Delivery partner lifecycle management
-- **Technology**: Node.js / Java
+#### 11. **Analytics Service**
+- **Purpose**: Business intelligence
+- **Technology**: Python
 - **Features**:
-  - Partner registration
-  - Verification and onboarding
-  - Performance tracking
-  - Earnings management
-  - Partner ratings
-
-#### 12. **Tracking Service**
-- **Purpose**: Real-time order and delivery tracking
-- **Technology**: Node.js / Java
-- **Features**:
-  - Order status tracking
-  - ETA calculation
-  - Live location tracking
-  - Delivery progress updates
-  - WebSocket for real-time updates
-
-#### 13. **Notification Service**
-- **Purpose**: Multi-channel customer communication
-- **Technology**: Node.js / Java
-- **Features**:
-  - SMS notifications
-  - Push notifications
-  - Email notifications
-  - In-app notifications
-  - Notification templates
-
-#### 14. **Pricing Service**
-- **Purpose**: Dynamic pricing and promotions
-- **Technology**: Node.js / Java
-- **Features**:
-  - Dynamic pricing rules
-  - Surge pricing
-  - Promotional pricing
-  - Discount management
-  - Price history
-
-#### 15. **Analytics Service**
-- **Purpose**: Business intelligence and reporting
-- **Technology**: Python / Java
-- **Features**:
-  - Order analytics
-  - Inventory analytics
-  - Delivery performance
+  - Learner behavior analytics
+  - Content performance
   - Revenue analytics
-  - Customer insights
+  - Instructor analytics
+  - System metrics
+
+#### 12. **Notification Service**
+- **Purpose**: Multi-channel notifications
+- **Technology**: Node.js
+- **Features**:
+  - Email notifications
+  - Push notifications
+  - In-app notifications
+  - SMS notifications
+  - Notification preferences
 
 ---
 
@@ -258,367 +242,215 @@ FlashKart is a **cloud-native quick commerce platform** designed to deliver groc
 
 ### Mapping Requirements to Architecture
 
-#### Requirement 1: Location-Aware Product Discovery & Ordering
-- **Services**: LocationService, CatalogService, InventoryService
-- **Components**: LocationResolver, StoreSelector, ProductCatalog, InventoryManager
-- **Patterns**: Strategy Pattern (store selection), Observer Pattern (inventory updates)
-- **Technology**: Redis (location cache), PostgreSQL (catalog), Real-time sync
+#### Requirement 1: Learning Content Delivery
+- **Services**: ContentService, CourseService, ProgressService
+- **Components**: VideoPlayer, Transcoder, CDN, ProgressTracker
+- **Patterns**: Strategy Pattern (streaming quality), Observer Pattern (progress)
+- **Technology**: CloudFront CDN, HLS streaming, FFmpeg
 
-#### Requirement 2: Ultra-Fast Order Fulfillment (10-20 Min SLA)
-- **Services**: OrderService, FulfillmentService, DeliveryService
-- **Components**: FulfillmentEngine, StoreSelector, SLAValidator, OrderRouter
-- **Patterns**: Strategy Pattern (fulfillment algorithms), Circuit Breaker (store failures)
-- **Technology**: Event-driven architecture, Real-time processing, Queue systems
+#### Requirement 2: Hands-On Lab Environment
+- **Services**: LabService, EnvironmentOrchestrator, ResourceManager
+- **Components**: LabProvisioner, SessionManager, TerminalService
+- **Patterns**: Factory Pattern (environment types), Pool Pattern (containers)
+- **Technology**: Kubernetes, Docker, code-server, WebSocket
 
-#### Requirement 3: Real-Time Inventory Management
-- **Services**: InventoryService, InventorySyncService
-- **Components**: InventoryManager, StockReserver, ReconciliationEngine
-- **Patterns**: Event Sourcing (inventory changes), Optimistic Locking (concurrency)
-- **Technology**: Redis (real-time cache), PostgreSQL (persistent), Event streaming
+#### Requirement 3: AI-Driven Learning Assistance
+- **Services**: AIService, RecommendationEngine, ContextAnalyzer
+- **Components**: SummaryGenerator, HintEngine, ChatBot, RAG Pipeline
+- **Patterns**: Strategy Pattern (AI models), Chain of Responsibility
+- **Technology**: OpenAI API, LangChain, Pinecone, Redis
 
-#### Requirement 4: Dynamic Delivery Partner Assignment
-- **Services**: DeliveryService, PartnerManagementService
-- **Components**: PartnerMatcher, RouteOptimizer, TrackingService, AssignmentEngine
-- **Patterns**: Strategy Pattern (assignment algorithms), Observer Pattern (tracking)
-- **Technology**: Location services (Google Maps), Real-time messaging (WebSocket), ML models
+#### Requirement 4: Scalability & Reliability
+- **Services**: All services designed for horizontal scaling
+- **Components**: LoadBalancer, AutoScaler, CircuitBreaker, HealthChecker
+- **Patterns**: Circuit Breaker, Bulkhead, Retry, CQRS
+- **Technology**: Kubernetes HPA, Redis, CDN, Database replication
 
-#### Requirement 5: End-to-End Order Lifecycle Management
-- **Services**: OrderService, NotificationService, TrackingService
-- **Components**: OrderManager, StatusTracker, ETACalculator, NotificationEngine
-- **Patterns**: State Machine Pattern (order states), Observer Pattern (notifications)
-- **Technology**: Event-driven architecture, WebSocket, Notification services
+#### Requirement 5: User Experience & Accessibility
+- **Services**: UIService, LocalizationService
+- **Components**: ResponsiveRenderer, LanguageManager, ThemeManager
+- **Patterns**: Adapter Pattern (devices), Strategy Pattern (themes)
+- **Technology**: React, PWA, i18next, ARIA
 
-#### Requirement 6: Seamless Payment & Refund Management
-- **Services**: PaymentService, RefundService
-- **Components**: PaymentGateway, RefundProcessor, TransactionManager
-- **Patterns**: Adapter Pattern (payment gateways), Circuit Breaker (gateway failures)
-- **Technology**: Payment gateways (Razorpay, Stripe), Secure storage, Encryption
+#### Requirement 6: Security & Data Protection
+- **Services**: AuthService, SecurityService, AuditService
+- **Components**: IdentityManager, AccessController, EncryptionService
+- **Patterns**: Decorator Pattern (security), Proxy Pattern (access)
+- **Technology**: OAuth 2.0, JWT, TLS, HashiCorp Vault
 
-#### Requirement 7: Scalability & Resilience
-- **Services**: All services designed for scalability
-- **Components**: LoadBalancer, AutoScaler, CircuitBreaker, CacheManager
-- **Patterns**: Circuit Breaker, Bulkhead, Retry Pattern, CQRS
-- **Technology**: Kubernetes, Redis, CDN, Database replication
+#### Requirement 7: Progress Tracking & Analytics
+- **Services**: ProgressService, AnalyticsService, ReportingService
+- **Components**: ProgressTracker, EventCollector, ReportGenerator
+- **Patterns**: Observer Pattern (tracking), CQRS (analytics)
+- **Technology**: PostgreSQL, ClickHouse, Redis
 
-#### Requirement 8: Operational Visibility & Monitoring
-- **Services**: MonitoringService, LoggingService, SecurityService
-- **Components**: MetricsCollector, AlertManager, TracingEngine, AuditLogger
-- **Patterns**: Observer Pattern (monitoring), Decorator Pattern (logging)
-- **Technology**: Prometheus, Grafana, ELK Stack, Jaeger
-
-#### Requirement 9: Extensible Platform Design
-- **Services**: ConfigurationService, CategoryService
-- **Components**: CityManager, CategoryManager, PluginManager, FeatureFlagManager
-- **Patterns**: Strategy Pattern (business models), Factory Pattern (extensibility)
-- **Technology**: Microservices, API Gateway, Configuration management
+#### Requirement 8: Content Management
+- **Services**: ContentManagementService, MediaService, WorkflowService
+- **Components**: CourseBuilder, MediaProcessor, VersionManager
+- **Patterns**: Builder Pattern (course creation), State Pattern (publishing)
+- **Technology**: S3, FFmpeg, Git-based versioning
 
 ---
 
 ## Low-Level Design (LLD)
 
-### Service-Level Design
-
-#### Location Service - Detailed Design
+### Lab Service - Detailed Design
 
 **Class Diagram:**
 ```
-LocationService
-├── LocationResolver
-│   ├── +resolveLocation(coordinates: Coordinates): Location
-│   ├── +validateLocation(location: Location): boolean
-│   └── +getDeliveryAddress(userId: string): Address
-├── StoreSelector
-│   ├── +findNearestStores(location: Location, radius: number): Store[]
-│   ├── +selectOptimalStore(location: Location, items: Item[]): Store
-│   └── +calculateDistance(location1: Location, location2: Location): number
-└── GeofenceManager
-    ├── +isWithinGeofence(location: Location, storeId: string): boolean
-    └── +getGeofenceRadius(storeId: string): number
+LabService
+├── LabProvisioner
+│   ├── +provisionLab(labId: string, userId: string): LabSession
+│   ├── +deprovisionLab(sessionId: string): void
+│   └── +resetLab(sessionId: string): LabSession
+├── SessionManager
+│   ├── +createSession(userId: string, labId: string): Session
+│   ├── +getSession(sessionId: string): Session
+│   ├── +extendSession(sessionId: string, minutes: number): void
+│   └── +terminateSession(sessionId: string): void
+└── ResourceManager
+    ├── +allocateResources(sessionId: string, spec: ResourceSpec): void
+    ├── +releaseResources(sessionId: string): void
+    └── +monitorResources(sessionId: string): ResourceMetrics
 ```
 
 **Key Methods:**
-- `resolveLocation(coordinates)`: Converts GPS coordinates to address
-- `findNearestStores(location, radius)`: Finds stores within delivery radius
-- `selectOptimalStore(location, items)`: Selects best store based on proximity, inventory, capacity
+- `provisionLab(labId, userId)`: Creates isolated container environment for learner
+- `resetLab(sessionId)`: Destroys current container and creates fresh instance
+- `allocateResources(sessionId, spec)`: Sets CPU, memory, storage limits
 
 **Database Schema:**
 ```sql
-CREATE TABLE locations (
+CREATE TABLE labs (
     id UUID PRIMARY KEY,
-    user_id UUID NOT NULL,
-    latitude DECIMAL(10, 8) NOT NULL,
-    longitude DECIMAL(11, 8) NOT NULL,
-    address TEXT,
-    city VARCHAR(100),
-    pincode VARCHAR(10),
+    course_id UUID NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    template_id UUID NOT NULL,
+    duration_minutes INT DEFAULT 60,
+    tech_stack VARCHAR(50)[],
+    difficulty_level VARCHAR(20),
     created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE dark_stores (
+CREATE TABLE lab_sessions (
+    id UUID PRIMARY KEY,
+    lab_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    status VARCHAR(20) DEFAULT 'PENDING',
+    container_id VARCHAR(100),
+    started_at TIMESTAMP,
+    expires_at TIMESTAMP,
+    terminal_url TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE lab_templates (
     id UUID PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    latitude DECIMAL(10, 8) NOT NULL,
-    longitude DECIMAL(11, 8) NOT NULL,
-    address TEXT,
-    city VARCHAR(100),
-    delivery_radius_km DECIMAL(5, 2) NOT NULL,
-    is_active BOOLEAN DEFAULT true,
+    base_image VARCHAR(255) NOT NULL,
+    init_script TEXT,
+    resource_limits JSONB,
+    ports INT[],
     created_at TIMESTAMP DEFAULT NOW()
 );
 ```
 
-#### Inventory Service - Detailed Design
+### AI Service - Detailed Design
 
 **Class Diagram:**
 ```
-InventoryService
-├── InventoryManager
-│   ├── +getInventory(storeId: string, productId: string): Inventory
-│   ├── +reserveInventory(orderId: string, items: Item[]): boolean
-│   ├── +releaseInventory(orderId: string): void
-│   └── +updateInventory(storeId: string, productId: string, quantity: number): void
-├── StockReserver
-│   ├── +reserveStock(storeId: string, productId: string, quantity: number): Reservation
-│   ├── +releaseStock(reservationId: string): void
-│   └── +checkAvailability(storeId: string, productId: string): number
-└── ReconciliationEngine
-    ├── +reconcileInventory(storeId: string): ReconciliationResult
-    └── +detectDiscrepancies(storeId: string): Discrepancy[]
+AIService
+├── SummaryGenerator
+│   ├── +generateVideoSummary(videoId: string): Summary
+│   ├── +generateLabSummary(sessionId: string): Summary
+│   └── +extractKeyPoints(content: string): KeyPoint[]
+├── HintEngine
+│   ├── +getContextualHint(sessionId: string, context: Context): Hint
+│   ├── +getTroubleshootingGuide(error: Error): Guide
+│   └── +getNextStepSuggestion(state: LabState): Suggestion
+├── ChatBot
+│   ├── +processQuery(query: string, context: Context): Response
+│   ├── +getConversationHistory(sessionId: string): Message[]
+│   └── +clearContext(sessionId: string): void
+└── RecommendationEngine
+    ├── +getPersonalizedCourses(userId: string): Course[]
+    ├── +getNextLessons(userId: string): Lesson[]
+    └── +getSkillGapAnalysis(userId: string): SkillGap[]
 ```
 
 **Key Methods:**
-- `reserveInventory(orderId, items)`: Reserves inventory during order placement (prevents overselling)
-- `releaseInventory(orderId)`: Releases reserved inventory on cancellation
-- `updateInventory(storeId, productId, quantity)`: Updates inventory after fulfillment
+- `generateVideoSummary(videoId)`: Uses LLM to create video summary from transcript
+- `getContextualHint(sessionId, context)`: Analyzes lab state and gives relevant hints
+- `processQuery(query, context)`: RAG-based Q&A using course content
 
 **Database Schema:**
 ```sql
-CREATE TABLE inventory (
-    id UUID PRIMARY KEY,
-    store_id UUID NOT NULL,
-    product_id UUID NOT NULL,
-    available_quantity INT NOT NULL DEFAULT 0,
-    reserved_quantity INT NOT NULL DEFAULT 0,
-    last_updated TIMESTAMP DEFAULT NOW(),
-    UNIQUE(store_id, product_id)
-);
-
-CREATE TABLE inventory_reservations (
-    id UUID PRIMARY KEY,
-    order_id UUID NOT NULL,
-    store_id UUID NOT NULL,
-    product_id UUID NOT NULL,
-    quantity INT NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    status VARCHAR(20) DEFAULT 'RESERVED',
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE inventory_history (
-    id UUID PRIMARY KEY,
-    store_id UUID NOT NULL,
-    product_id UUID NOT NULL,
-    change_type VARCHAR(20), -- 'IN', 'OUT', 'ADJUSTMENT'
-    quantity INT NOT NULL,
-    reason TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-#### Order Service - Detailed Design
-
-**Class Diagram:**
-```
-OrderService
-├── OrderManager
-│   ├── +createOrder(userId: string, items: Item[], address: Address): Order
-│   ├── +getOrder(orderId: string): Order
-│   ├── +cancelOrder(orderId: string, reason: string): boolean
-│   └── +updateOrderStatus(orderId: string, status: OrderStatus): void
-├── OrderValidator
-│   ├── +validateOrder(order: Order): ValidationResult
-│   └── +checkInventoryAvailability(order: Order): boolean
-└── OrderStateMachine
-    ├── +transition(orderId: string, newStatus: OrderStatus): boolean
-    └── +getValidTransitions(currentStatus: OrderStatus): OrderStatus[]
-```
-
-**Order State Machine:**
-```
-PENDING → CONFIRMED → ASSIGNED_TO_STORE → PICKING → PACKED → 
-ASSIGNED_TO_PARTNER → PICKED_UP → IN_TRANSIT → DELIVERED → CLOSED
-
-Alternative paths:
-- PENDING → CANCELLED (before confirmation)
-- CONFIRMED → CANCELLED (before store assignment)
-- ASSIGNED_TO_STORE → CANCELLED (before picking)
-- Any state → REFUNDED (on cancellation/refund)
-```
-
-**Database Schema:**
-```sql
-CREATE TABLE orders (
+CREATE TABLE ai_interactions (
     id UUID PRIMARY KEY,
     user_id UUID NOT NULL,
-    store_id UUID,
-    delivery_partner_id UUID,
-    status VARCHAR(20) NOT NULL,
-    total_amount DECIMAL(10, 2) NOT NULL,
-    delivery_address TEXT NOT NULL,
-    delivery_latitude DECIMAL(10, 8),
-    delivery_longitude DECIMAL(11, 8),
-    sla_minutes INT DEFAULT 20,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE order_items (
-    id UUID PRIMARY KEY,
-    order_id UUID NOT NULL,
-    product_id UUID NOT NULL,
-    quantity INT NOT NULL,
-    unit_price DECIMAL(10, 2) NOT NULL,
-    total_price DECIMAL(10, 2) NOT NULL,
-    FOREIGN KEY (order_id) REFERENCES orders(id)
-);
-
-CREATE TABLE order_status_history (
-    id UUID PRIMARY KEY,
-    order_id UUID NOT NULL,
-    status VARCHAR(20) NOT NULL,
-    changed_at TIMESTAMP DEFAULT NOW(),
-    changed_by VARCHAR(100),
-    notes TEXT,
-    FOREIGN KEY (order_id) REFERENCES orders(id)
-);
-```
-
-#### Fulfillment Service - Detailed Design
-
-**Class Diagram:**
-```
-FulfillmentService
-├── FulfillmentEngine
-│   ├── +assignStore(order: Order): Store
-│   ├── +calculateFulfillmentTime(storeId: string, items: Item[]): number
-│   └── +checkStoreCapacity(storeId: string): CapacityStatus
-├── StoreSelector
-│   ├── +selectBestStore(order: Order): Store
-│   ├── +rankStores(order: Order): Store[]
-│   └── +calculateScore(store: Store, order: Order): number
-└── SLAValidator
-    ├── +validateSLA(order: Order): boolean
-    └── +calculateRemainingTime(order: Order): number
-```
-
-**Fulfillment Algorithm:**
-```
-1. Get order location and items
-2. Find stores within delivery radius
-3. For each store:
-   a. Check inventory availability for all items
-   b. Check current capacity (pending orders)
-   c. Calculate distance from order location
-   d. Calculate estimated fulfillment time
-   e. Calculate score = f(proximity, inventory, capacity, time)
-4. Select store with highest score
-5. Reserve inventory
-6. Assign order to store
-```
-
-**Database Schema:**
-```sql
-CREATE TABLE store_capacity (
-    id UUID PRIMARY KEY,
-    store_id UUID NOT NULL,
-    current_pending_orders INT DEFAULT 0,
-    max_capacity INT NOT NULL,
-    average_fulfillment_time_minutes INT,
-    last_updated TIMESTAMP DEFAULT NOW(),
-    UNIQUE(store_id)
-);
-
-CREATE TABLE fulfillment_assignments (
-    id UUID PRIMARY KEY,
-    order_id UUID NOT NULL,
-    store_id UUID NOT NULL,
-    assigned_at TIMESTAMP DEFAULT NOW(),
-    estimated_ready_time TIMESTAMP,
-    actual_ready_time TIMESTAMP,
-    FOREIGN KEY (order_id) REFERENCES orders(id),
-    FOREIGN KEY (store_id) REFERENCES dark_stores(id)
-);
-```
-
-#### Delivery Service - Detailed Design
-
-**Class Diagram:**
-```
-DeliveryService
-├── PartnerMatcher
-│   ├── +assignPartner(order: Order): DeliveryPartner
-│   ├── +findAvailablePartners(location: Location, radius: number): DeliveryPartner[]
-│   └── +calculateAssignmentScore(partner: DeliveryPartner, order: Order): number
-├── RouteOptimizer
-│   ├── +optimizeRoute(orders: Order[]): Route
-│   ├── +calculateETA(pickupLocation: Location, deliveryLocation: Location): number
-│   └── +getOptimalRoute(start: Location, end: Location): Route
-└── AssignmentEngine
-    ├── +reassignPartner(orderId: string, reason: string): DeliveryPartner
-    └── +releasePartner(orderId: string): void
-```
-
-**Partner Assignment Algorithm:**
-```
-1. Get order pickup location (store) and delivery location
-2. Find available partners within radius
-3. For each partner:
-   a. Calculate distance from partner to store
-   b. Calculate distance from store to delivery location
-   c. Check partner's current workload
-   d. Check partner's rating
-   e. Calculate score = f(proximity, workload, rating, ETA)
-4. Select partner with highest score
-5. Assign order to partner
-6. Update partner availability
-```
-
-**Database Schema:**
-```sql
-CREATE TABLE delivery_partners (
-    id UUID PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    phone VARCHAR(20) NOT NULL UNIQUE,
-    vehicle_type VARCHAR(50),
-    current_latitude DECIMAL(10, 8),
-    current_longitude DECIMAL(11, 8),
-    is_available BOOLEAN DEFAULT true,
-    current_orders_count INT DEFAULT 0,
-    max_concurrent_orders INT DEFAULT 1,
-    rating DECIMAL(3, 2),
-    total_deliveries INT DEFAULT 0,
+    session_id UUID,
+    interaction_type VARCHAR(50), -- 'query', 'hint', 'summary'
+    input_text TEXT,
+    output_text TEXT,
+    context JSONB,
+    feedback_rating INT,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE delivery_assignments (
+CREATE TABLE content_embeddings (
     id UUID PRIMARY KEY,
-    order_id UUID NOT NULL,
-    partner_id UUID NOT NULL,
-    assigned_at TIMESTAMP DEFAULT NOW(),
-    picked_up_at TIMESTAMP,
-    delivered_at TIMESTAMP,
-    status VARCHAR(20) DEFAULT 'ASSIGNED',
-    FOREIGN KEY (order_id) REFERENCES orders(id),
-    FOREIGN KEY (partner_id) REFERENCES delivery_partners(id)
+    content_id UUID NOT NULL,
+    content_type VARCHAR(50), -- 'video', 'lesson', 'lab'
+    chunk_index INT,
+    embedding VECTOR(1536),
+    chunk_text TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+### Content Service - Detailed Design
+
+**Class Diagram:**
+```
+ContentService
+├── VideoManager
+│   ├── +uploadVideo(file: File, metadata: VideoMeta): Video
+│   ├── +getStreamingUrl(videoId: string, quality: string): string
+│   ├── +processVideo(videoId: string): ProcessingJob
+│   └── +generateSubtitles(videoId: string): Subtitle[]
+├── TranscodingService
+│   ├── +transcode(videoId: string, formats: Format[]): Job
+│   ├── +getJobStatus(jobId: string): JobStatus
+│   └── +generateThumbnails(videoId: string): Thumbnail[]
+└── CDNManager
+    ├── +invalidateCache(paths: string[]): void
+    ├── +getSignedUrl(path: string, expiry: number): string
+    └── +uploadToCDN(file: File, path: string): string
+```
+
+**Database Schema:**
+```sql
+CREATE TABLE videos (
+    id UUID PRIMARY KEY,
+    lesson_id UUID NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    duration_seconds INT,
+    original_url TEXT,
+    hls_url TEXT,
+    thumbnail_url TEXT,
+    status VARCHAR(20) DEFAULT 'PROCESSING',
+    transcript TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE partner_location_history (
+CREATE TABLE video_qualities (
     id UUID PRIMARY KEY,
-    partner_id UUID NOT NULL,
-    latitude DECIMAL(10, 8) NOT NULL,
-    longitude DECIMAL(11, 8) NOT NULL,
-    recorded_at TIMESTAMP DEFAULT NOW(),
-    FOREIGN KEY (partner_id) REFERENCES delivery_partners(id)
+    video_id UUID NOT NULL,
+    quality VARCHAR(20), -- '360p', '720p', '1080p'
+    bitrate INT,
+    url TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
 );
 ```
 
@@ -626,276 +458,237 @@ CREATE TABLE partner_location_history (
 
 ## Design Patterns
 
-### 1. Strategy Pattern
-**Use Case**: Store selection, fulfillment algorithms, partner assignment
-**Implementation**: Different algorithms for store selection (proximity-based, capacity-based, inventory-based) can be swapped dynamically
-**Example**: `StoreSelectionStrategy` interface with implementations: `ProximityStrategy`, `CapacityStrategy`, `HybridStrategy`
+### 1. Factory Pattern
+**Use Case**: Lab environment creation
+**Implementation**: Different factories for different tech stacks (Python, Node.js, Go, etc.)
+**Example**: `LabEnvironmentFactory` creates appropriate container based on lab template
 
-### 2. Observer Pattern
-**Use Case**: Inventory updates, order status changes, partner location updates
-**Implementation**: Services subscribe to events (inventory changes, order status updates) and react accordingly
-**Example**: `InventoryObserver` listens to inventory changes and updates cache
+### 2. Strategy Pattern
+**Use Case**: Video streaming quality, AI model selection
+**Implementation**: Interchangeable algorithms for different contexts
+**Example**: `StreamingStrategy` switches between qualities based on network
 
-### 3. State Machine Pattern
-**Use Case**: Order lifecycle management
-**Implementation**: Order states (PENDING, CONFIRMED, ASSIGNED, etc.) with valid transitions
-**Example**: `OrderStateMachine` manages order state transitions
+### 3. Observer Pattern
+**Use Case**: Progress tracking, real-time notifications
+**Implementation**: Services subscribe to events and react accordingly
+**Example**: `ProgressObserver` listens to video/lab completion events
 
 ### 4. Circuit Breaker Pattern
-**Use Case**: External service calls (payment gateways, maps API, notification services)
+**Use Case**: External service calls (AI API, payment gateway)
 **Implementation**: Prevents cascading failures when external services are down
-**Example**: `PaymentGatewayCircuitBreaker` opens circuit after N failures
+**Example**: `AIServiceCircuitBreaker` opens circuit after N failures
 
-### 5. Event Sourcing Pattern
-**Use Case**: Inventory changes, order history
-**Implementation**: Store all events (inventory changes, order status changes) for audit and replay
-**Example**: `InventoryEventStore` stores all inventory change events
+### 5. Pool Pattern
+**Use Case**: Pre-warmed lab containers
+**Implementation**: Maintain pool of ready-to-use containers for fast provisioning
+**Example**: `ContainerPool` maintains warm containers per tech stack
 
-### 6. CQRS (Command Query Responsibility Segregation)
-**Use Case**: Read-heavy operations (product catalog, order history)
-**Implementation**: Separate read and write models for better performance
-**Example**: Write to PostgreSQL, read from Redis/Elasticsearch
+### 6. CQRS Pattern
+**Use Case**: Analytics queries, progress reporting
+**Implementation**: Separate read models for complex queries
+**Example**: Write to PostgreSQL, read from ClickHouse for analytics
 
-### 7. Repository Pattern
-**Use Case**: Data access abstraction
-**Implementation**: Abstract data access layer for easier testing and swapping data sources
-**Example**: `OrderRepository`, `InventoryRepository`
+### 7. Event Sourcing Pattern
+**Use Case**: Learning activity history, audit trail
+**Implementation**: Store all events for replay and analysis
+**Example**: `LearningEventStore` stores all learner actions
 
-### 8. Factory Pattern
-**Use Case**: Creating different types of services (payment gateways, notification channels)
-**Implementation**: Factory creates appropriate implementation based on configuration
-**Example**: `PaymentGatewayFactory` creates Razorpay/Stripe gateway based on config
+### 8. Builder Pattern
+**Use Case**: Course creation, lab template building
+**Implementation**: Step-by-step construction of complex objects
+**Example**: `CourseBuilder` constructs course with modules, lessons, labs
 
-### 9. Adapter Pattern
-**Use Case**: Integrating with external services (payment gateways, maps API)
-**Implementation**: Adapter translates between our interface and external service interface
-**Example**: `PaymentGatewayAdapter` adapts different payment gateway APIs to our interface
+### 9. Proxy Pattern
+**Use Case**: Access control, caching
+**Implementation**: Control access to services/resources
+**Example**: `LabAccessProxy` validates subscription before lab access
 
-### 10. Bulkhead Pattern
-**Use Case**: Isolating failures between services
-**Implementation**: Separate thread pools/resources for different services
-**Example**: Payment service failures don't affect order service
+### 10. Decorator Pattern
+**Use Case**: Logging, caching, security wrapping
+**Implementation**: Add functionality without modifying core logic
+**Example**: `CachingDecorator` wraps AI service for response caching
 
-### 11. Retry Pattern
-**Use Case**: Transient failures (network issues, temporary service unavailability)
-**Implementation**: Automatic retry with exponential backoff
-**Example**: `RetryHandler` retries failed API calls with backoff
+### 11. Adapter Pattern
+**Use Case**: Third-party integrations
+**Implementation**: Unified interface for different providers
+**Example**: `PaymentAdapter` adapts Stripe/PayPal to common interface
 
-### 12. Decorator Pattern
-**Use Case**: Adding cross-cutting concerns (logging, caching, monitoring)
-**Implementation**: Decorators wrap services to add functionality
-**Example**: `CachingDecorator` wraps service calls with caching
+### 12. State Pattern
+**Use Case**: Lab session states, course publishing workflow
+**Implementation**: State-specific behavior management
+**Example**: `LabSessionStateMachine` manages session lifecycle
 
 ---
 
 ## System Components
 
 ### API Gateway
-- **Purpose**: Single entry point for all client requests
-- **Features**: Authentication, rate limiting, routing, request/response transformation
-- **Technology**: Kong, AWS API Gateway, or custom implementation
+- **Purpose**: Single entry point for all requests
+- **Features**: Authentication, rate limiting, routing, request transformation
+- **Technology**: Kong / AWS API Gateway / Nginx
 
 ### Service Mesh
-- **Purpose**: Service-to-service communication, load balancing, security
+- **Purpose**: Service-to-service communication
 - **Features**: mTLS, circuit breakers, retries, observability
-- **Technology**: Istio, Linkerd, or Consul Connect
+- **Technology**: Istio / Linkerd
 
 ### Message Queue
-- **Purpose**: Asynchronous communication between services
-- **Features**: Event streaming, pub/sub, queue management
-- **Technology**: Kafka (for event streaming), RabbitMQ (for queues)
+- **Purpose**: Asynchronous communication
+- **Features**: Event streaming, pub/sub, guaranteed delivery
+- **Technology**: Kafka
 
 ### Cache Layer
-- **Purpose**: Fast data access for frequently accessed data
-- **Features**: In-memory caching, distributed caching
-- **Technology**: Redis (for real-time data), Memcached (for simple caching)
-
-### Database Layer
-- **Purpose**: Persistent data storage
-- **Features**: ACID transactions, replication, sharding
-- **Technology**: PostgreSQL (for relational data), MongoDB (for document data)
+- **Purpose**: Fast data access
+- **Features**: Session cache, content cache, rate limiting
+- **Technology**: Redis Cluster
 
 ### Search Engine
-- **Purpose**: Fast product search and filtering
+- **Purpose**: Course and content search
 - **Features**: Full-text search, faceted search, autocomplete
 - **Technology**: Elasticsearch
 
-### CDN
-- **Purpose**: Fast content delivery
-- **Features**: Static asset caching, geographic distribution
-- **Technology**: CloudFront, Cloudflare, or Fastly
+### Vector Database
+- **Purpose**: AI similarity search
+- **Features**: Embedding storage, semantic search
+- **Technology**: Pinecone / Weaviate
 
 ---
 
 ## Data Flow
 
-### Order Placement Flow
-
+### Video Streaming Flow
 ```
-1. Customer App
-   ↓ (POST /api/orders)
+1. Learner App
+   ↓ (GET /api/videos/{id}/stream)
+2. API Gateway
+   ↓ (authenticate, validate subscription)
+3. Content Service
+   ↓ (get streaming URL)
+4. CDN (CloudFront)
+   ↓ (serve HLS segments)
+5. Learner App
+   ↓ (report progress)
+6. Progress Service
+   ↓ (update progress)
+7. Event Bus (Kafka)
+   ↓ (progress.updated event)
+8. Analytics Service
+```
+
+### Lab Session Flow
+```
+1. Learner App
+   ↓ (POST /api/labs/{id}/start)
+2. API Gateway
+   ↓ (authenticate)
+3. Lab Service
+   ↓ (check session limits)
+4. Container Pool
+   ↓ (get warm container)
+5. Resource Manager
+   ↓ (allocate resources)
+6. Kubernetes
+   ↓ (assign to container)
+7. Lab Service
+   ↓ (generate terminal URL)
+8. Learner App
+   ↓ (WebSocket connection)
+9. Terminal Service
+   ↓ (interactive session)
+```
+
+### AI Assistance Flow
+```
+1. Learner App
+   ↓ (POST /api/ai/query)
 2. API Gateway
    ↓ (authenticate, rate limit)
-3. Order Service
-   ↓ (validate order)
-4. Inventory Service
-   ↓ (check & reserve inventory)
-5. Payment Service
-   ↓ (process payment)
-6. Order Service
-   ↓ (create order, publish event)
-7. Event Bus (Kafka)
-   ↓ (order.created event)
-8. Fulfillment Service
-   ↓ (assign store)
-9. Notification Service
-   ↓ (send confirmation)
-10. Customer App
-    ↓ (order confirmed)
-```
-
-### Order Fulfillment Flow
-
-```
-1. Fulfillment Service
-   ↓ (assign store)
-2. Dark Store Operations
-   ↓ (pick & pack)
-3. Dark Store Operations
-   ↓ (mark as ready)
-4. Event Bus
-   ↓ (order.ready event)
-5. Delivery Service
-   ↓ (assign partner)
-6. Notification Service
-   ↓ (send pickup notification)
-7. Delivery Partner App
-   ↓ (pickup order)
-8. Tracking Service
-   ↓ (update status)
-9. Delivery Partner App
-   ↓ (deliver order)
-10. Order Service
-    ↓ (mark as delivered)
-11. Notification Service
-    ↓ (send delivery confirmation)
-```
-
-### Inventory Sync Flow
-
-```
-1. Dark Store Operations
-   ↓ (scan barcode, update inventory)
-2. Dark Store System
-   ↓ (publish inventory.update event)
-3. Event Bus
-   ↓ (inventory.update event)
-4. Inventory Service
-   ↓ (update inventory)
-5. Cache (Redis)
-   ↓ (update cache)
-6. Catalog Service
-   ↓ (update product availability)
-7. Customer App
-   ↓ (real-time inventory update)
+3. AI Service
+   ↓ (get context from session)
+4. Vector Database
+   ↓ (semantic search for relevant content)
+5. AI Service
+   ↓ (build RAG prompt)
+6. OpenAI API
+   ↓ (generate response)
+7. AI Service
+   ↓ (post-process, log interaction)
+8. Learner App
+   ↓ (display response)
 ```
 
 ---
 
 ## Security Considerations
 
+### Lab Isolation
+- **Network Isolation**: Each lab runs in isolated network namespace
+- **Process Isolation**: Container-level process isolation
+- **Resource Limits**: CPU, memory, storage quotas per session
+- **Egress Control**: Whitelist-only outbound network access
+- **Session Timeout**: Automatic termination after inactivity
+
 ### Authentication & Authorization
-- **JWT Tokens**: Stateless authentication for API access
-- **OAuth 2.0**: For third-party integrations
-- **Role-Based Access Control (RBAC)**: Different roles (customer, store staff, delivery partner, admin)
-- **API Keys**: For service-to-service communication
+- **OAuth 2.0**: For third-party authentication
+- **JWT**: For API authentication
+- **RBAC**: Role-based access control
+- **SSO**: Enterprise single sign-on support
+- **MFA**: Optional multi-factor authentication
 
 ### Data Protection
-- **Encryption at Rest**: Database encryption (AES-256)
-- **Encryption in Transit**: TLS 1.3 for all communications
-- **PCI-DSS Compliance**: For payment data
-- **PII Protection**: Encrypt sensitive customer data
-
-### Security Monitoring
-- **Intrusion Detection**: Monitor for suspicious activities
-- **Rate Limiting**: Prevent DDoS and abuse
-- **Audit Logging**: Log all security-relevant events
-- **Vulnerability Scanning**: Regular security scans
+- **Encryption at Rest**: AES-256 for stored data
+- **Encryption in Transit**: TLS 1.3 for all traffic
+- **DRM**: Video content protection
+- **PII Handling**: GDPR-compliant data handling
+- **Audit Logging**: Complete audit trail
 
 ---
 
 ## Scalability & Performance
 
 ### Horizontal Scaling
-- **Microservices**: Each service can scale independently
-- **Kubernetes**: Auto-scaling based on CPU/memory/custom metrics
-- **Load Balancing**: Distribute traffic across multiple instances
+- **Kubernetes HPA**: Auto-scale based on CPU/memory
+- **Lab Pool Scaling**: Dynamic container pool sizing
+- **Database Sharding**: User-based sharding for scale
 
 ### Caching Strategy
-- **Redis**: Cache frequently accessed data (inventory, product catalog)
-- **CDN**: Cache static assets (images, CSS, JS)
-- **Application Cache**: Cache computed results
-
-### Database Optimization
-- **Read Replicas**: Distribute read load
-- **Sharding**: Partition data by city/store
-- **Indexing**: Optimize query performance
-- **Connection Pooling**: Efficient database connections
+- **CDN**: Video content edge caching
+- **Redis**: Session, progress, frequent queries
+- **Application Cache**: In-memory for hot data
 
 ### Performance Targets
-- **API Response Time**: < 200ms (p95)
-- **Order Placement**: < 2 seconds end-to-end
-- **Inventory Updates**: < 100ms propagation
-- **Order Tracking**: Real-time (< 1 second latency)
+- **Video Startup**: < 2 seconds
+- **Lab Startup**: < 5 seconds
+- **API Response**: < 200ms (p95)
+- **AI Response**: < 3 seconds
+- **Concurrent Labs**: 100K+ sessions
 
 ---
 
 ## Monitoring & Observability
 
 ### Metrics
-- **Application Metrics**: Request rate, error rate, latency
-- **Business Metrics**: Orders per minute, delivery SLA compliance, inventory accuracy
-- **Infrastructure Metrics**: CPU, memory, disk, network
+- **Application**: Request rate, error rate, latency
+- **Business**: Active users, lab sessions, course completions
+- **Infrastructure**: CPU, memory, network, storage
+- **Technology**: Prometheus, Grafana
 
 ### Logging
-- **Structured Logging**: JSON format for easy parsing
-- **Log Aggregation**: Centralized logging (ELK Stack)
-- **Log Retention**: 30 days for application logs, 1 year for audit logs
+- **Application Logs**: Structured JSON logging
+- **Audit Logs**: Security and access events
+- **Technology**: ELK Stack (Elasticsearch, Logstash, Kibana)
 
 ### Tracing
-- **Distributed Tracing**: Track requests across services (Jaeger/Zipkin)
-- **Trace Sampling**: Sample traces to reduce overhead
-- **Service Map**: Visualize service dependencies
+- **Distributed Tracing**: Request flow across services
+- **Technology**: Jaeger / Zipkin
 
 ### Alerting
-- **Critical Alerts**: System downtime, payment failures, SLA breaches
-- **Warning Alerts**: High error rates, performance degradation
-- **Notification Channels**: Email, SMS, Slack, PagerDuty
+- **Critical Alerts**: < 1 minute response
+- **Warning Alerts**: < 5 minute response
+- **Technology**: PagerDuty / Alertmanager
 
 ---
 
-## Deployment Architecture
-
-### Infrastructure
-- **Cloud Provider**: AWS / GCP / Azure
-- **Container Orchestration**: Kubernetes
-- **Container Registry**: Docker Hub / ECR / GCR
-- **CI/CD**: Jenkins / GitLab CI / GitHub Actions
-
-### Environment Strategy
-- **Development**: Single cluster, shared services
-- **Staging**: Production-like environment for testing
-- **Production**: Multi-region deployment for high availability
-
-### Disaster Recovery
-- **Backup Strategy**: Daily database backups, point-in-time recovery
-- **Multi-Region**: Deploy in multiple regions
-- **Failover**: Automatic failover to backup region
-- **RTO**: Recovery Time Objective < 1 hour
-- **RPO**: Recovery Point Objective < 15 minutes
-
----
-
-**Last Updated**: January 2025
+**Last Updated**: January 2026
 **Version**: 1.0
 **Status**: Design Complete, Implementation Pending

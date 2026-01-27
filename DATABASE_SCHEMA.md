@@ -1,540 +1,678 @@
-# FlashKart Quick Commerce - Database Schema
+# LearnCraft - Database Schema
+
+> **⚠️ Core Requirements**: Database design supports the core requirements defined in [KEY_REQUIREMENTS.md](./KEY_REQUIREMENTS.md).
 
 ## Table of Contents
-1. [Entity Relationship Diagram](#entity-relationship-diagram)
-2. [Database Tables](#database-tables)
-3. [Indexes](#indexes)
-4. [Relationships](#relationships)
-5. [Data Types and Constraints](#data-types-and-constraints)
+1. [Overview](#overview)
+2. [Entity Relationship Diagram](#entity-relationship-diagram)
+3. [Table Definitions](#table-definitions)
+4. [Indexes](#indexes)
+5. [Relationships](#relationships)
+
+---
+
+## Overview
+
+LearnCraft uses **PostgreSQL** as the primary database with additional specialized stores:
+- **PostgreSQL**: Primary relational data (users, courses, progress)
+- **Redis**: Caching, sessions, rate limiting
+- **ClickHouse**: Analytics and time-series data
+- **Pinecone/Weaviate**: Vector embeddings for AI
+
+### Database Principles
+1. **Normalization**: 3NF for transactional tables
+2. **Soft Deletes**: Most entities use `deleted_at` instead of hard delete
+3. **Audit Trails**: Created/updated timestamps on all tables
+4. **UUIDs**: Primary keys use UUID for distribution
+5. **Enum Constraints**: Domain values enforced via PostgreSQL enums
 
 ---
 
 ## Entity Relationship Diagram
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        ER Diagram                               │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌──────────────┐         ┌──────────────┐                    │
-│  │    Users     │         │   Addresses  │                    │
-│  ├──────────────┤         ├──────────────┤                    │
-│  │ id (PK)      │────────│ id (PK)      │                    │
-│  │ name         │   1:N   │ user_id (FK) │                    │
-│  │ email        │         │ street       │                    │
-│  │ phone        │         │ city         │                    │
-│  │ role         │         │ latitude     │                    │
-│  └──────────────┘         │ longitude    │                    │
-│                           └──────────────┘                    │
-│                                                                 │
-│  ┌──────────────┐         ┌──────────────┐                    │
-│  │   Products   │         │  Categories  │                    │
-│  ├──────────────┤         ├──────────────┤                    │
-│  │ id (PK)      │────────│ id (PK)      │                    │
-│  │ name         │   N:1   │ name         │                    │
-│  │ description  │         │ description  │                    │
-│  │ category_id  │         └──────────────┘                    │
-│  │ base_price   │                                              │
-│  └──────────────┘                                              │
-│                                                                 │
-│  ┌──────────────┐         ┌──────────────┐                    │
-│  │ Dark Stores  │         │  Inventory   │                    │
-│  ├──────────────┤         ├──────────────┤                    │
-│  │ id (PK)      │────────│ id (PK)      │                    │
-│  │ name         │   1:N   │ store_id (FK)│                    │
-│  │ latitude     │         │ product_id(FK)│                   │
-│  │ longitude    │         │ available_qty│                    │
-│  │ radius_km    │         │ reserved_qty │                    │
-│  └──────────────┘         └──────────────┘                    │
-│                                                                 │
-│  ┌──────────────┐         ┌──────────────┐                    │
-│  │    Orders    │         │  Order Items │                    │
-│  ├──────────────┤         ├──────────────┤                    │
-│  │ id (PK)      │────────│ id (PK)      │                    │
-│  │ user_id (FK) │   1:N   │ order_id (FK)│                    │
-│  │ store_id(FK) │         │ product_id(FK)│                   │
-│  │ status       │         │ quantity     │                    │
-│  │ total_amount │         │ unit_price   │                    │
-│  └──────────────┘         └──────────────┘                    │
-│                                                                 │
-│  ┌──────────────┐         ┌──────────────┐                    │
-│  │   Payments   │         │   Refunds    │                    │
-│  ├──────────────┤         ├──────────────┤                    │
-│  │ id (PK)      │────────│ id (PK)      │                    │
-│  │ order_id (FK)│   1:1   │ payment_id(FK)│                   │
-│  │ amount       │         │ amount       │                    │
-│  │ method       │         │ status       │                    │
-│  │ status       │         └──────────────┘                    │
-│  └──────────────┘                                              │
-│                                                                 │
-│  ┌──────────────┐         ┌──────────────┐                    │
-│  │   Partners   │         │ Assignments  │                    │
-│  ├──────────────┤         ├──────────────┤                    │
-│  │ id (PK)      │────────│ id (PK)      │                    │
-│  │ name         │   1:N   │ order_id (FK)│                    │
-│  │ phone        │         │ partner_id(FK)│                   │
-│  │ vehicle_type │         │ status       │                    │
-│  │ is_available │         │ assigned_at │                    │
-│  └──────────────┘         └──────────────┘                    │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+erDiagram
+    USERS ||--o{ ENROLLMENTS : enrolls
+    USERS ||--o{ LAB_SESSIONS : starts
+    USERS ||--o{ PROGRESS : tracks
+    USERS ||--o{ CERTIFICATES : earns
+    USERS ||--o{ AI_INTERACTIONS : has
+    
+    COURSES ||--o{ MODULES : contains
+    COURSES ||--o{ ENROLLMENTS : has
+    COURSES ||--|{ USERS : instructed_by
+    
+    MODULES ||--o{ LESSONS : contains
+    
+    LESSONS ||--o| VIDEOS : has
+    LESSONS ||--o| LABS : has
+    LESSONS ||--o{ ASSESSMENTS : has
+    
+    LABS ||--|| LAB_TEMPLATES : uses
+    LABS ||--o{ LAB_SESSIONS : spawns
+    
+    ASSESSMENTS ||--o{ QUESTIONS : contains
+    ASSESSMENTS ||--o{ ASSESSMENT_ATTEMPTS : has
+    ASSESSMENT_ATTEMPTS ||--o{ ANSWERS : contains
+    
+    USERS {
+        uuid id PK
+        varchar email UK
+        varchar password_hash
+        varchar first_name
+        varchar last_name
+        enum role
+        enum subscription_tier
+        timestamp created_at
+    }
+    
+    COURSES {
+        uuid id PK
+        uuid instructor_id FK
+        varchar title
+        varchar slug UK
+        text description
+        enum category
+        enum skill_level
+        enum status
+        integer duration_minutes
+        decimal price
+        timestamp published_at
+    }
+    
+    MODULES {
+        uuid id PK
+        uuid course_id FK
+        varchar title
+        text description
+        integer order_index
+    }
+    
+    LESSONS {
+        uuid id PK
+        uuid module_id FK
+        varchar title
+        enum lesson_type
+        integer order_index
+        integer duration_minutes
+        boolean is_free
+    }
+    
+    VIDEOS {
+        uuid id PK
+        uuid lesson_id FK
+        varchar title
+        integer duration_seconds
+        varchar hls_url
+        varchar thumbnail_url
+        text transcript
+        enum status
+    }
+    
+    LABS {
+        uuid id PK
+        uuid lesson_id FK
+        uuid template_id FK
+        varchar title
+        text description
+        integer duration_minutes
+        enum difficulty
+        text instructions
+        jsonb success_criteria
+    }
+    
+    LAB_TEMPLATES {
+        uuid id PK
+        varchar name
+        varchar base_image
+        text init_script
+        jsonb resource_limits
+        integer[] ports
+        varchar tech_stack
+    }
+    
+    LAB_SESSIONS {
+        uuid id PK
+        uuid lab_id FK
+        uuid user_id FK
+        enum status
+        varchar container_id
+        varchar terminal_url
+        timestamp started_at
+        timestamp expires_at
+        integer reset_count
+    }
+    
+    ENROLLMENTS {
+        uuid id PK
+        uuid user_id FK
+        uuid course_id FK
+        enum status
+        decimal price_paid
+        timestamp enrolled_at
+        timestamp completed_at
+    }
+    
+    CERTIFICATES {
+        uuid id PK
+        uuid user_id FK
+        uuid course_id FK
+        varchar certificate_number UK
+        varchar pdf_url
+        timestamp issued_at
+    }
 ```
 
 ---
 
-## Database Tables
+## Table Definitions
 
-### Users Table
+### Users & Authentication
 
 ```sql
+-- User Roles Enum
+CREATE TYPE user_role AS ENUM ('learner', 'instructor', 'content_admin', 'system_admin');
+
+-- Subscription Tiers Enum
+CREATE TYPE subscription_tier AS ENUM ('free', 'basic', 'pro', 'premium', 'enterprise');
+
+-- Users Table
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    phone VARCHAR(20) UNIQUE NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    role VARCHAR(20) NOT NULL DEFAULT 'CUSTOMER', -- CUSTOMER, ADMIN, STORE_STAFF, PARTNER
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    role user_role NOT NULL DEFAULT 'learner',
+    subscription_tier subscription_tier NOT NULL DEFAULT 'free',
+    avatar_url VARCHAR(500),
+    bio TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    is_email_verified BOOLEAN NOT NULL DEFAULT false,
+    last_login_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMP
 );
 
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_phone ON users(phone);
-CREATE INDEX idx_users_role ON users(role);
-```
-
-### Addresses Table
-
-```sql
-CREATE TABLE addresses (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    street TEXT NOT NULL,
-    city VARCHAR(100) NOT NULL,
-    state VARCHAR(100) NOT NULL,
-    pincode VARCHAR(10) NOT NULL,
-    latitude DECIMAL(10, 8),
-    longitude DECIMAL(11, 8),
-    is_default BOOLEAN DEFAULT false,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_addresses_user_id ON addresses(user_id);
-CREATE INDEX idx_addresses_location ON addresses(latitude, longitude);
-```
-
-### Categories Table
-
-```sql
-CREATE TABLE categories (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(100) UNIQUE NOT NULL,
-    description TEXT,
-    parent_category_id UUID REFERENCES categories(id),
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_categories_parent ON categories(parent_category_id);
-```
-
-### Products Table
-
-```sql
-CREATE TABLE products (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    category_id UUID NOT NULL REFERENCES categories(id),
-    base_price DECIMAL(10, 2) NOT NULL,
-    images TEXT[], -- Array of image URLs
-    nutritional_info JSONB, -- JSON for nutritional information
-    status VARCHAR(20) DEFAULT 'ACTIVE', -- ACTIVE, INACTIVE, DISCONTINUED
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_products_category ON products(category_id);
-CREATE INDEX idx_products_status ON products(status);
-CREATE INDEX idx_products_name ON products(name);
-```
-
-### Dark Stores Table
-
-```sql
-CREATE TABLE dark_stores (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL,
-    latitude DECIMAL(10, 8) NOT NULL,
-    longitude DECIMAL(11, 8) NOT NULL,
-    address TEXT NOT NULL,
-    city VARCHAR(100) NOT NULL,
-    pincode VARCHAR(10) NOT NULL,
-    delivery_radius_km DECIMAL(5, 2) NOT NULL DEFAULT 3.0,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_stores_location ON dark_stores(latitude, longitude);
-CREATE INDEX idx_stores_city ON dark_stores(city);
-CREATE INDEX idx_stores_active ON dark_stores(is_active);
-```
-
-### Store Capacity Table
-
-```sql
-CREATE TABLE store_capacity (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    store_id UUID NOT NULL UNIQUE REFERENCES dark_stores(id) ON DELETE CASCADE,
-    current_pending_orders INT DEFAULT 0,
-    max_capacity INT NOT NULL DEFAULT 100,
-    average_fulfillment_time_minutes INT DEFAULT 15,
-    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_store_capacity_store_id ON store_capacity(store_id);
-```
-
-### Inventory Table
-
-```sql
-CREATE TABLE inventory (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    store_id UUID NOT NULL REFERENCES dark_stores(id) ON DELETE CASCADE,
-    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-    available_quantity INT NOT NULL DEFAULT 0,
-    reserved_quantity INT NOT NULL DEFAULT 0,
-    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(store_id, product_id)
-);
-
-CREATE INDEX idx_inventory_store_product ON inventory(store_id, product_id);
-CREATE INDEX idx_inventory_store ON inventory(store_id);
-CREATE INDEX idx_inventory_product ON inventory(product_id);
-CREATE INDEX idx_inventory_available ON inventory(available_quantity);
-```
-
-### Inventory Reservations Table
-
-```sql
-CREATE TABLE inventory_reservations (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    order_id UUID NOT NULL,
-    store_id UUID NOT NULL REFERENCES dark_stores(id),
-    product_id UUID NOT NULL REFERENCES products(id),
-    quantity INT NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    status VARCHAR(20) DEFAULT 'RESERVED', -- RESERVED, RELEASED, EXPIRED
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_reservations_order ON inventory_reservations(order_id);
-CREATE INDEX idx_reservations_expires ON inventory_reservations(expires_at);
-CREATE INDEX idx_reservations_status ON inventory_reservations(status);
-```
-
-### Inventory History Table
-
-```sql
-CREATE TABLE inventory_history (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    store_id UUID NOT NULL REFERENCES dark_stores(id),
-    product_id UUID NOT NULL REFERENCES products(id),
-    change_type VARCHAR(20) NOT NULL, -- IN, OUT, ADJUSTMENT, RESERVED, RELEASED
-    quantity INT NOT NULL,
-    previous_quantity INT,
-    new_quantity INT,
-    reason TEXT,
-    order_id UUID,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_inventory_history_store_product ON inventory_history(store_id, product_id);
-CREATE INDEX idx_inventory_history_created ON inventory_history(created_at);
-CREATE INDEX idx_inventory_history_order ON inventory_history(order_id);
-```
-
-### Orders Table
-
-```sql
-CREATE TABLE orders (
+-- User Preferences Table
+CREATE TABLE user_preferences (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id),
-    store_id UUID REFERENCES dark_stores(id),
-    delivery_partner_id UUID REFERENCES delivery_partners(id),
-    status VARCHAR(20) NOT NULL DEFAULT 'PENDING', -- PENDING, CONFIRMED, ASSIGNED_TO_STORE, PICKING, PACKED, ASSIGNED_TO_PARTNER, PICKED_UP, IN_TRANSIT, DELIVERED, CANCELLED, REFUNDED
-    total_amount DECIMAL(10, 2) NOT NULL,
-    delivery_fee DECIMAL(10, 2) DEFAULT 0,
-    delivery_address TEXT NOT NULL,
-    delivery_latitude DECIMAL(10, 8),
-    delivery_longitude DECIMAL(11, 8),
-    sla_minutes INT DEFAULT 20,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    confirmed_at TIMESTAMP,
-    delivered_at TIMESTAMP,
-    cancelled_at TIMESTAMP
+    language VARCHAR(10) NOT NULL DEFAULT 'en',
+    theme VARCHAR(20) NOT NULL DEFAULT 'light',
+    email_notifications BOOLEAN NOT NULL DEFAULT true,
+    push_notifications BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_orders_user_id ON orders(user_id);
-CREATE INDEX idx_orders_store_id ON orders(store_id);
-CREATE INDEX idx_orders_partner_id ON orders(delivery_partner_id);
-CREATE INDEX idx_orders_status ON orders(status);
-CREATE INDEX idx_orders_created ON orders(created_at);
-CREATE INDEX idx_orders_delivery_location ON orders(delivery_latitude, delivery_longitude);
-```
-
-### Order Items Table
-
-```sql
-CREATE TABLE order_items (
+-- Subscriptions Table
+CREATE TABLE subscriptions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-    product_id UUID NOT NULL REFERENCES products(id),
-    quantity INT NOT NULL,
-    unit_price DECIMAL(10, 2) NOT NULL,
-    total_price DECIMAL(10, 2) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    user_id UUID NOT NULL REFERENCES users(id),
+    tier subscription_tier NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'active',
+    stripe_subscription_id VARCHAR(100),
+    current_period_start TIMESTAMP NOT NULL,
+    current_period_end TIMESTAMP NOT NULL,
+    cancel_at_period_end BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
-
-CREATE INDEX idx_order_items_order_id ON order_items(order_id);
-CREATE INDEX idx_order_items_product_id ON order_items(product_id);
 ```
 
-### Order Status History Table
+### Courses & Content
 
 ```sql
-CREATE TABLE order_status_history (
+-- Course Category Enum
+CREATE TYPE course_category AS ENUM (
+    'web_development', 'mobile_development', 'devops', 'cloud',
+    'data_science', 'machine_learning', 'security', 'databases', 'programming_languages'
+);
+
+-- Skill Level Enum
+CREATE TYPE skill_level AS ENUM ('beginner', 'intermediate', 'advanced', 'expert');
+
+-- Course Status Enum
+CREATE TYPE course_status AS ENUM ('draft', 'pending_review', 'revision_needed', 'published', 'archived');
+
+-- Courses Table
+CREATE TABLE courses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-    status VARCHAR(20) NOT NULL,
-    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    changed_by VARCHAR(100), -- user_id or system
-    notes TEXT
+    instructor_id UUID NOT NULL REFERENCES users(id),
+    title VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) NOT NULL UNIQUE,
+    short_description VARCHAR(500),
+    description TEXT,
+    category course_category NOT NULL,
+    skill_level skill_level NOT NULL,
+    status course_status NOT NULL DEFAULT 'draft',
+    thumbnail_url VARCHAR(500),
+    preview_video_url VARCHAR(500),
+    duration_minutes INTEGER NOT NULL DEFAULT 0,
+    price DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    is_featured BOOLEAN NOT NULL DEFAULT false,
+    rating_average DECIMAL(3, 2) DEFAULT 0.00,
+    rating_count INTEGER DEFAULT 0,
+    enrollment_count INTEGER DEFAULT 0,
+    published_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMP
 );
 
-CREATE INDEX idx_order_status_history_order ON order_status_history(order_id);
-CREATE INDEX idx_order_status_history_changed ON order_status_history(changed_at);
-```
-
-### Payments Table
-
-```sql
-CREATE TABLE payments (
+-- Modules Table
+CREATE TABLE modules (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    order_id UUID NOT NULL REFERENCES orders(id),
-    payment_method VARCHAR(20) NOT NULL, -- UPI, CREDIT_CARD, DEBIT_CARD, WALLET, COD
-    amount DECIMAL(10, 2) NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'PENDING', -- PENDING, PROCESSING, SUCCESS, FAILED, REFUNDED
-    transaction_id VARCHAR(255),
-    gateway_response JSONB, -- Store gateway response
-    processed_at TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    order_index INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_payments_order_id ON payments(order_id);
-CREATE INDEX idx_payments_transaction_id ON payments(transaction_id);
-CREATE INDEX idx_payments_status ON payments(status);
-CREATE INDEX idx_payments_created ON payments(created_at);
-```
+-- Lesson Type Enum
+CREATE TYPE lesson_type AS ENUM ('video', 'lab', 'quiz', 'reading', 'mixed');
 
-### Refunds Table
-
-```sql
-CREATE TABLE refunds (
+-- Lessons Table
+CREATE TABLE lessons (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    payment_id UUID NOT NULL REFERENCES payments(id),
-    order_id UUID NOT NULL REFERENCES orders(id),
-    amount DECIMAL(10, 2) NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'PENDING', -- PENDING, PROCESSING, SUCCESS, FAILED
-    refund_reason TEXT,
-    transaction_id VARCHAR(255),
-    processed_at TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    module_id UUID NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    lesson_type lesson_type NOT NULL,
+    order_index INTEGER NOT NULL,
+    duration_minutes INTEGER NOT NULL DEFAULT 0,
+    is_free BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_refunds_payment_id ON refunds(payment_id);
-CREATE INDEX idx_refunds_order_id ON refunds(order_id);
-CREATE INDEX idx_refunds_status ON refunds(status);
+-- Video Status Enum
+CREATE TYPE video_status AS ENUM ('uploading', 'processing', 'ready', 'failed');
+
+-- Videos Table
+CREATE TABLE videos (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lesson_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    original_filename VARCHAR(255),
+    duration_seconds INTEGER,
+    original_url VARCHAR(500),
+    hls_url VARCHAR(500),
+    thumbnail_url VARCHAR(500),
+    status video_status NOT NULL DEFAULT 'uploading',
+    transcript TEXT,
+    ai_summary TEXT,
+    file_size_bytes BIGINT,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Video Qualities Table
+CREATE TABLE video_qualities (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    video_id UUID NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+    quality VARCHAR(20) NOT NULL, -- '360p', '720p', '1080p', '4k'
+    bitrate INTEGER NOT NULL,
+    url VARCHAR(500) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
 ```
 
-### Delivery Partners Table
+### Labs & Sessions
 
 ```sql
-CREATE TABLE delivery_partners (
+-- Tech Stack Enum
+CREATE TYPE tech_stack AS ENUM (
+    'python', 'nodejs', 'go', 'java', 'rust', 'ruby',
+    'postgresql', 'mysql', 'mongodb', 'redis',
+    'docker', 'kubernetes', 'terraform',
+    'react', 'vue', 'angular'
+);
+
+-- Lab Difficulty Enum
+CREATE TYPE lab_difficulty AS ENUM ('easy', 'medium', 'hard', 'expert');
+
+-- Lab Templates Table
+CREATE TABLE lab_templates (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
-    phone VARCHAR(20) UNIQUE NOT NULL,
-    email VARCHAR(255),
-    vehicle_type VARCHAR(50), -- BIKE, SCOOTER, CAR
-    current_latitude DECIMAL(10, 8),
-    current_longitude DECIMAL(11, 8),
-    is_available BOOLEAN DEFAULT true,
-    current_orders_count INT DEFAULT 0,
-    max_concurrent_orders INT DEFAULT 1,
-    rating DECIMAL(3, 2) DEFAULT 0.0,
-    total_deliveries INT DEFAULT 0,
-    is_verified BOOLEAN DEFAULT false,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    description TEXT,
+    base_image VARCHAR(255) NOT NULL,
+    tech_stack tech_stack NOT NULL,
+    init_script TEXT,
+    resource_limits JSONB NOT NULL DEFAULT '{"cpu": "0.5", "memory": "512Mi", "storage": "1Gi"}',
+    ports INTEGER[] DEFAULT ARRAY[8080],
+    environment_vars JSONB DEFAULT '{}',
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_partners_phone ON delivery_partners(phone);
-CREATE INDEX idx_partners_location ON delivery_partners(current_latitude, current_longitude);
-CREATE INDEX idx_partners_available ON delivery_partners(is_available);
-CREATE INDEX idx_partners_rating ON delivery_partners(rating);
+-- Labs Table
+CREATE TABLE labs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lesson_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+    template_id UUID NOT NULL REFERENCES lab_templates(id),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    duration_minutes INTEGER NOT NULL DEFAULT 60,
+    difficulty lab_difficulty NOT NULL DEFAULT 'medium',
+    instructions TEXT NOT NULL,
+    success_criteria JSONB NOT NULL,
+    starter_files JSONB,
+    solution_files JSONB,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Session Status Enum
+CREATE TYPE session_status AS ENUM ('pending', 'provisioning', 'running', 'paused', 'completed', 'expired', 'failed');
+
+-- Lab Sessions Table
+CREATE TABLE lab_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lab_id UUID NOT NULL REFERENCES labs(id),
+    user_id UUID NOT NULL REFERENCES users(id),
+    status session_status NOT NULL DEFAULT 'pending',
+    container_id VARCHAR(100),
+    pod_name VARCHAR(100),
+    terminal_url VARCHAR(500),
+    started_at TIMESTAMP,
+    expires_at TIMESTAMP,
+    completed_at TIMESTAMP,
+    reset_count INTEGER NOT NULL DEFAULT 0,
+    validation_result JSONB,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
 ```
 
-### Delivery Assignments Table
+### Enrollments & Progress
 
 ```sql
-CREATE TABLE delivery_assignments (
+-- Enrollment Status Enum
+CREATE TYPE enrollment_status AS ENUM ('active', 'completed', 'expired', 'cancelled');
+
+-- Enrollments Table
+CREATE TABLE enrollments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    order_id UUID NOT NULL UNIQUE REFERENCES orders(id),
-    partner_id UUID NOT NULL REFERENCES delivery_partners(id),
-    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    picked_up_at TIMESTAMP,
-    delivered_at TIMESTAMP,
-    status VARCHAR(20) DEFAULT 'ASSIGNED', -- ASSIGNED, PICKED_UP, IN_TRANSIT, DELIVERED, CANCELLED
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    user_id UUID NOT NULL REFERENCES users(id),
+    course_id UUID NOT NULL REFERENCES courses(id),
+    status enrollment_status NOT NULL DEFAULT 'active',
+    price_paid DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    payment_id VARCHAR(100),
+    enrolled_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    completed_at TIMESTAMP,
+    expires_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    UNIQUE(user_id, course_id)
 );
 
-CREATE INDEX idx_assignments_order_id ON delivery_assignments(order_id);
-CREATE INDEX idx_assignments_partner_id ON delivery_assignments(partner_id);
-CREATE INDEX idx_assignments_status ON delivery_assignments(status);
+-- Progress Status Enum
+CREATE TYPE progress_status AS ENUM ('not_started', 'in_progress', 'completed');
+
+-- Course Progress Table
+CREATE TABLE course_progress (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    enrollment_id UUID NOT NULL REFERENCES enrollments(id) ON DELETE CASCADE,
+    completed_lessons INTEGER NOT NULL DEFAULT 0,
+    total_lessons INTEGER NOT NULL DEFAULT 0,
+    completed_labs INTEGER NOT NULL DEFAULT 0,
+    total_labs INTEGER NOT NULL DEFAULT 0,
+    time_spent_minutes INTEGER NOT NULL DEFAULT 0,
+    percent_complete DECIMAL(5, 2) NOT NULL DEFAULT 0.00,
+    last_accessed_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Lesson Progress Table
+CREATE TABLE lesson_progress (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id),
+    lesson_id UUID NOT NULL REFERENCES lessons(id),
+    status progress_status NOT NULL DEFAULT 'not_started',
+    video_position_seconds INTEGER DEFAULT 0,
+    video_duration_seconds INTEGER DEFAULT 0,
+    video_completed BOOLEAN NOT NULL DEFAULT false,
+    lab_completed BOOLEAN NOT NULL DEFAULT false,
+    quiz_score INTEGER,
+    started_at TIMESTAMP,
+    completed_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    UNIQUE(user_id, lesson_id)
+);
+
+-- Video Bookmarks Table
+CREATE TABLE video_bookmarks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id),
+    video_id UUID NOT NULL REFERENCES videos(id),
+    position_seconds INTEGER NOT NULL,
+    note TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
 ```
 
-### Partner Location History Table
+### Assessments
 
 ```sql
-CREATE TABLE partner_location_history (
+-- Assessment Type Enum
+CREATE TYPE assessment_type AS ENUM ('quiz', 'practice', 'exam', 'certification');
+
+-- Question Type Enum
+CREATE TYPE question_type AS ENUM ('multiple_choice', 'multi_select', 'true_false', 'fill_blank', 'code');
+
+-- Assessments Table
+CREATE TABLE assessments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    partner_id UUID NOT NULL REFERENCES delivery_partners(id) ON DELETE CASCADE,
-    latitude DECIMAL(10, 8) NOT NULL,
-    longitude DECIMAL(11, 8) NOT NULL,
-    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    lesson_id UUID REFERENCES lessons(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    assessment_type assessment_type NOT NULL DEFAULT 'quiz',
+    passing_score INTEGER NOT NULL DEFAULT 70,
+    time_limit_minutes INTEGER,
+    max_attempts INTEGER DEFAULT 3,
+    shuffle_questions BOOLEAN NOT NULL DEFAULT true,
+    show_answers_after BOOLEAN NOT NULL DEFAULT true,
+    is_proctored BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_partner_location_history_partner ON partner_location_history(partner_id);
-CREATE INDEX idx_partner_location_history_recorded ON partner_location_history(recorded_at);
+-- Questions Table
+CREATE TABLE questions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    assessment_id UUID NOT NULL REFERENCES assessments(id) ON DELETE CASCADE,
+    question_type question_type NOT NULL,
+    content TEXT NOT NULL,
+    options JSONB, -- for multiple choice
+    correct_answer TEXT NOT NULL,
+    explanation TEXT,
+    points INTEGER NOT NULL DEFAULT 1,
+    order_index INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Attempt Status Enum
+CREATE TYPE attempt_status AS ENUM ('in_progress', 'completed', 'timed_out');
+
+-- Assessment Attempts Table
+CREATE TABLE assessment_attempts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id),
+    assessment_id UUID NOT NULL REFERENCES assessments(id),
+    status attempt_status NOT NULL DEFAULT 'in_progress',
+    score INTEGER,
+    total_points INTEGER,
+    percent_score DECIMAL(5, 2),
+    is_passing BOOLEAN,
+    started_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    completed_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Answers Table
+CREATE TABLE answers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    attempt_id UUID NOT NULL REFERENCES assessment_attempts(id) ON DELETE CASCADE,
+    question_id UUID NOT NULL REFERENCES questions(id),
+    response TEXT,
+    is_correct BOOLEAN,
+    points_earned INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
 ```
 
-### Store Prices Table (for dynamic pricing)
+### Certificates
 
 ```sql
-CREATE TABLE store_prices (
+-- Certificates Table
+CREATE TABLE certificates (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    store_id UUID NOT NULL REFERENCES dark_stores(id) ON DELETE CASCADE,
-    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-    price DECIMAL(10, 2) NOT NULL,
-    effective_from TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    effective_to TIMESTAMP,
-    is_active BOOLEAN DEFAULT true,
-    UNIQUE(store_id, product_id, effective_from)
+    user_id UUID NOT NULL REFERENCES users(id),
+    course_id UUID NOT NULL REFERENCES courses(id),
+    certificate_number VARCHAR(50) NOT NULL UNIQUE,
+    title VARCHAR(255) NOT NULL,
+    pdf_url VARCHAR(500),
+    verification_url VARCHAR(500),
+    issued_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    UNIQUE(user_id, course_id)
+);
+```
+
+### AI & Analytics
+
+```sql
+-- Interaction Type Enum
+CREATE TYPE interaction_type AS ENUM ('query', 'hint', 'summary', 'recommendation', 'explanation');
+
+-- AI Interactions Table
+CREATE TABLE ai_interactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id),
+    session_id UUID REFERENCES lab_sessions(id),
+    interaction_type interaction_type NOT NULL,
+    input_text TEXT NOT NULL,
+    output_text TEXT NOT NULL,
+    context JSONB,
+    model_used VARCHAR(50),
+    tokens_used INTEGER,
+    response_time_ms INTEGER,
+    feedback_rating INTEGER CHECK (feedback_rating BETWEEN 1 AND 5),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_store_prices_store_product ON store_prices(store_id, product_id);
-CREATE INDEX idx_store_prices_effective ON store_prices(effective_from, effective_to);
+-- Content Embeddings Table (for RAG)
+CREATE TABLE content_embeddings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    content_id UUID NOT NULL,
+    content_type VARCHAR(50) NOT NULL, -- 'video', 'lesson', 'lab'
+    chunk_index INTEGER NOT NULL,
+    chunk_text TEXT NOT NULL,
+    embedding VECTOR(1536), -- OpenAI embedding dimension
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Learning Analytics Events Table
+CREATE TABLE learning_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id),
+    event_type VARCHAR(50) NOT NULL,
+    event_data JSONB NOT NULL,
+    course_id UUID REFERENCES courses(id),
+    lesson_id UUID REFERENCES lessons(id),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
 ```
 
 ---
 
 ## Indexes
 
-### Primary Indexes
-- All tables have primary key indexes on `id` column
+```sql
+-- Users Indexes
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_role ON users(role);
+CREATE INDEX idx_users_subscription ON users(subscription_tier);
 
-### Foreign Key Indexes
-- All foreign key columns are indexed for join performance
+-- Courses Indexes
+CREATE INDEX idx_courses_instructor ON courses(instructor_id);
+CREATE INDEX idx_courses_category ON courses(category);
+CREATE INDEX idx_courses_status ON courses(status);
+CREATE INDEX idx_courses_slug ON courses(slug);
+CREATE INDEX idx_courses_published ON courses(published_at) WHERE status = 'published';
 
-### Composite Indexes
-- `inventory(store_id, product_id)` - Unique constraint for inventory lookup
-- `inventory_reservations(order_id, status)` - For order reservation queries
-- `orders(user_id, status)` - For user order history
-- `orders(store_id, status)` - For store order queue
-- `delivery_assignments(partner_id, status)` - For partner assignments
+-- Modules Indexes
+CREATE INDEX idx_modules_course ON modules(course_id);
+CREATE INDEX idx_modules_order ON modules(course_id, order_index);
 
-### Performance Indexes
-- `orders(created_at)` - For time-based queries
-- `inventory_history(created_at)` - For audit queries
-- `partner_location_history(recorded_at)` - For location tracking
+-- Lessons Indexes
+CREATE INDEX idx_lessons_module ON lessons(module_id);
+CREATE INDEX idx_lessons_order ON lessons(module_id, order_index);
+
+-- Videos Indexes
+CREATE INDEX idx_videos_lesson ON videos(lesson_id);
+CREATE INDEX idx_videos_status ON videos(status);
+
+-- Labs Indexes
+CREATE INDEX idx_labs_lesson ON labs(lesson_id);
+CREATE INDEX idx_labs_template ON labs(template_id);
+
+-- Lab Sessions Indexes
+CREATE INDEX idx_lab_sessions_user ON lab_sessions(user_id);
+CREATE INDEX idx_lab_sessions_lab ON lab_sessions(lab_id);
+CREATE INDEX idx_lab_sessions_status ON lab_sessions(status);
+CREATE INDEX idx_lab_sessions_active ON lab_sessions(user_id, status) WHERE status = 'running';
+
+-- Enrollments Indexes
+CREATE INDEX idx_enrollments_user ON enrollments(user_id);
+CREATE INDEX idx_enrollments_course ON enrollments(course_id);
+CREATE UNIQUE INDEX idx_enrollments_unique ON enrollments(user_id, course_id);
+
+-- Progress Indexes
+CREATE INDEX idx_lesson_progress_user ON lesson_progress(user_id);
+CREATE INDEX idx_lesson_progress_lesson ON lesson_progress(lesson_id);
+
+-- AI Interactions Indexes
+CREATE INDEX idx_ai_interactions_user ON ai_interactions(user_id);
+CREATE INDEX idx_ai_interactions_session ON ai_interactions(session_id);
+CREATE INDEX idx_ai_interactions_type ON ai_interactions(interaction_type);
+
+-- Content Embeddings Index (for vector similarity search)
+CREATE INDEX idx_content_embeddings_vector ON content_embeddings USING ivfflat (embedding vector_cosine_ops);
+```
 
 ---
 
 ## Relationships
 
-### One-to-Many Relationships
-- `users` → `addresses` (1 user can have many addresses)
-- `users` → `orders` (1 user can have many orders)
-- `categories` → `products` (1 category can have many products)
-- `dark_stores` → `inventory` (1 store can have many inventory items)
-- `dark_stores` → `orders` (1 store can fulfill many orders)
-- `products` → `order_items` (1 product can be in many order items)
-- `orders` → `order_items` (1 order can have many items)
-- `orders` → `order_status_history` (1 order can have many status changes)
-- `delivery_partners` → `delivery_assignments` (1 partner can have many assignments)
-- `payments` → `refunds` (1 payment can have many refunds)
+### Foreign Key Relationships
 
-### One-to-One Relationships
-- `dark_stores` → `store_capacity` (1 store has 1 capacity record)
-- `orders` → `delivery_assignments` (1 order has 1 assignment)
-- `payments` → `orders` (1 order has 1 payment, but can have multiple attempts)
-
-### Many-to-Many Relationships
-- `dark_stores` ↔ `products` (through `inventory` table)
-- `products` ↔ `categories` (through `category_id` foreign key)
+| Parent Table | Child Table | Relationship | Cascade |
+|--------------|-------------|--------------|---------|
+| users | courses | One-to-Many | SET NULL |
+| users | enrollments | One-to-Many | CASCADE |
+| users | lab_sessions | One-to-Many | CASCADE |
+| users | certificates | One-to-Many | CASCADE |
+| courses | modules | One-to-Many | CASCADE |
+| courses | enrollments | One-to-Many | CASCADE |
+| modules | lessons | One-to-Many | CASCADE |
+| lessons | videos | One-to-One | CASCADE |
+| lessons | labs | One-to-One | CASCADE |
+| labs | lab_sessions | One-to-Many | SET NULL |
+| lab_templates | labs | One-to-Many | RESTRICT |
 
 ---
 
-## Data Types and Constraints
-
-### UUID
-- Used for all primary keys and foreign keys
-- Generated using `gen_random_uuid()` function
-
-### DECIMAL
-- Used for monetary values (prices, amounts)
-- Format: `DECIMAL(10, 2)` for amounts up to ₹99,99,99,999.99
-- Format: `DECIMAL(10, 8)` for latitude
-- Format: `DECIMAL(11, 8)` for longitude
-
-### TIMESTAMP
-- Used for all date/time fields
-- Default: `CURRENT_TIMESTAMP`
-- Updated automatically using triggers
-
-### VARCHAR
-- Used for text fields with known max length
-- Indexed for search performance
-
-### TEXT
-- Used for longer text fields (descriptions, addresses)
-- Not indexed by default
-
-### JSONB
-- Used for flexible data structures (gateway responses, nutritional info)
-- Indexed using GIN indexes for query performance
-
-### BOOLEAN
-- Used for flags (is_active, is_available, is_default)
-- Indexed for filtering
-
-### Constraints
-- **NOT NULL**: Required fields
-- **UNIQUE**: Unique constraints on email, phone, composite keys
-- **CHECK**: Validation constraints (e.g., quantity > 0, rating between 0-5)
-- **FOREIGN KEY**: Referential integrity
-- **DEFAULT**: Default values for optional fields
-
----
-
-**Last Updated**: January 2025
+**Last Updated**: January 2026
 **Version**: 1.0
 **Status**: Design Complete, Implementation Pending

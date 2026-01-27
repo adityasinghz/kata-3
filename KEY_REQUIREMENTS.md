@@ -1,40 +1,40 @@
-# FlashKart Quick Commerce - Key Requirements Reference
+# LearnCraft - Key Requirements Reference
 
 ## Core Requirements (Must-Have Features)
 
-This document serves as the **single source of truth** for the core requirements that form the foundation of FlashKart Quick Commerce Platform. All architecture, features, and business decisions must align with these requirements.
+This document serves as the **single source of truth** for the core requirements that form the foundation of LearnCraft Online Learning Platform. All architecture, features, and business decisions must align with these requirements.
 
 ---
 
-## 1. Location-Aware Product Discovery & Ordering
+## 1. Learning Content Delivery
 
 ### Requirement Statement
-**Location-aware customer experience enabling product discovery and ordering based on the user's delivery location with real-time visibility of product availability and pricing across nearby dark stores.**
+**Host and stream high-quality video tutorials with support for structured courses, modules, and progress tracking, enhanced by AI-generated summaries to help learners quickly revise key concepts.**
 
 ### Key Components
-- ✅ **Location Detection**: GPS-based or manual address selection
-- ✅ **Dark Store Proximity**: Find nearest dark stores within delivery radius
-- ✅ **Real-Time Inventory**: Live inventory availability per dark store
-- ✅ **Dynamic Pricing**: Store-specific pricing based on demand and inventory
-- ✅ **Product Catalog**: Categorized products (groceries, essentials, snacks)
-- ✅ **Search & Filter**: Location-aware search with filters (category, price, availability)
+- ✅ **Video Hosting & Streaming**: CDN-backed video delivery with adaptive bitrate
+- ✅ **Course Structure**: Hierarchical organization (Courses → Modules → Lessons)
+- ✅ **Progress Tracking**: Real-time tracking of video completion and course progress
+- ✅ **AI Summaries**: Auto-generated video summaries and key takeaways
+- ✅ **Bookmarks & Notes**: Learner annotations and timestamp bookmarks
+- ✅ **Offline Support**: Downloadable content for offline learning
 
 ### Architecture Mapping
-- **Service**: `LocationService`, `CatalogService`, `InventoryService` (ARCHITECTURE.md)
-- **Components**: `LocationResolver`, `StoreSelector`, `ProductCatalog`, `InventoryManager`
-- **Pattern**: Strategy Pattern (for store selection), Observer Pattern (for inventory updates)
-- **Technology**: Redis (location cache), PostgreSQL (catalog), Real-time inventory sync
+- **Service**: `ContentService`, `VideoStreamingService`, `AISummaryService` (ARCHITECTURE.md)
+- **Components**: `VideoPlayer`, `CourseManager`, `ProgressTracker`, `SummaryGenerator`
+- **Pattern**: Strategy Pattern (for video quality), Observer Pattern (for progress updates)
+- **Technology**: CDN (CloudFront/Cloudflare), HLS streaming, FFmpeg transcoding
 
 ### Feature Mapping
 - **Feature ID**: F1 (FEATURES.md)
 - **Priority**: P0 (Critical)
 - **User Stories**: US1.1, US1.2, US1.3 (FEATURES.md)
-- **Acceptance Criteria**: FR1.1-FR1.8, NFR1.1-NFR1.3 (FEATURES.md)
+- **Acceptance Criteria**: FR1.1-FR1.10, NFR1.1-NFR1.4 (FEATURES.md)
 
 ### Business Impact
-- **Value Proposition**: Core customer experience (BUSINESS_PERSPECTIVE.md)
-- **Revenue Driver**: Enables order placement (primary revenue stream)
-- **Competitive Advantage**: Real-time inventory prevents overselling, improves trust
+- **Value Proposition**: Core learning experience (BUSINESS_PERSPECTIVE.md)
+- **Revenue Driver**: Subscription-based access to premium content
+- **Competitive Advantage**: AI summaries reduce revision time by 50%
 
 ### Implementation Status
 - ✅ Architecture designed
@@ -43,35 +43,35 @@ This document serves as the **single source of truth** for the core requirements
 
 ---
 
-## 2. Ultra-Fast Order Fulfillment (10-20 Minute SLA)
+## 2. Hands-On Lab Environment
 
 ### Requirement Statement
-**Guaranteed ultra-fast delivery experience with a committed 10–20 minute SLA through intelligent fulfillment selection using proximity, inventory availability, and operational capacity.**
+**Provide on-demand, browser-based lab environments for practical exercises, ensuring labs are isolated, secure, time-bound, and resettable after each session, supporting multiple technology stacks and toolchains.**
 
 ### Key Components
-- ✅ **Order Routing**: Automatic routing to nearest eligible dark store
-- ✅ **Fulfillment Selection**: Algorithm considering proximity, inventory, capacity
-- ✅ **SLA Management**: Real-time tracking of SLA compliance
-- ✅ **Dark Store Operations**: Integration with dark store fulfillment systems
-- ✅ **Pick & Pack**: Automated order picking and packing workflows
-- ✅ **Ready Time Estimation**: Accurate estimation of order ready time
+- ✅ **Browser-Based Labs**: Web-based IDEs and terminal access
+- ✅ **Environment Isolation**: Containerized, sandboxed environments per learner
+- ✅ **Time-Bound Sessions**: Configurable session duration with auto-cleanup
+- ✅ **Resettable Environments**: One-click environment reset to initial state
+- ✅ **Multi-Stack Support**: Support for various languages, frameworks, and tools
+- ✅ **Resource Management**: CPU, memory, and storage limits per session
 
 ### Architecture Mapping
-- **Service**: `OrderFulfillmentService`, `StoreAssignmentService` (ARCHITECTURE.md)
-- **Components**: `FulfillmentEngine`, `StoreSelector`, `SLAValidator`, `OrderRouter`
-- **Pattern**: Strategy Pattern (for fulfillment algorithms), Circuit Breaker (for store failures)
-- **Technology**: Event-driven architecture, Real-time processing, Queue systems (RabbitMQ/Kafka)
+- **Service**: `LabService`, `EnvironmentOrchestrator`, `ResourceManager` (ARCHITECTURE.md)
+- **Components**: `LabProvisioner`, `SessionManager`, `EnvironmentController`, `ResourceMonitor`
+- **Pattern**: Factory Pattern (for environment types), Pool Pattern (for pre-warmed containers)
+- **Technology**: Kubernetes, Docker, WebSocket (terminal), code-server (VS Code)
 
 ### Feature Mapping
 - **Feature ID**: F2 (FEATURES.md)
 - **Priority**: P0 (Critical)
 - **User Stories**: US2.1, US2.2, US2.3 (FEATURES.md)
-- **Acceptance Criteria**: FR2.1-FR2.10, NFR2.1-NFR2.4 (FEATURES.md)
+- **Acceptance Criteria**: FR2.1-FR2.12, NFR2.1-NFR2.5 (FEATURES.md)
 
 ### Business Impact
-- **Value Proposition**: Core differentiator - 10-20 minute delivery (BUSINESS_PERSPECTIVE.md)
-- **Revenue Driver**: Competitive advantage, customer retention
-- **Competitive Advantage**: Fastest delivery in market, operational excellence
+- **Value Proposition**: Core differentiator - hands-on practice (BUSINESS_PERSPECTIVE.md)
+- **Revenue Driver**: Premium labs with extended session times
+- **Competitive Advantage**: Real-world environments vs. simulation-based competitors
 
 ### Implementation Status
 - ✅ Architecture designed
@@ -80,35 +80,35 @@ This document serves as the **single source of truth** for the core requirements
 
 ---
 
-## 3. Real-Time Inventory Management
+## 3. AI-Driven Learning Assistance
 
 ### Requirement Statement
-**Accurate inventory management at dark store level with protection against overselling, ensuring real-time synchronization across all channels.**
+**Generate summaries and key takeaways from lab activities and learner actions, provide contextual hints, explanations, or troubleshooting guidance during labs, and offer personalized learning recommendations based on learner progress and behavior.**
 
 ### Key Components
-- ✅ **Dark Store Inventory**: Per-store inventory tracking
-- ✅ **Real-Time Sync**: Live inventory updates across all systems
-- ✅ **Overselling Prevention**: Reserve inventory during order placement
-- ✅ **Inventory Reconciliation**: Automated reconciliation with physical stock
-- ✅ **Low Stock Alerts**: Proactive alerts for restocking
-- ✅ **Multi-Channel Sync**: Synchronize across app, web, POS systems
+- ✅ **Activity Summaries**: AI-generated summaries of lab sessions
+- ✅ **Contextual Hints**: Real-time hints based on learner actions
+- ✅ **Troubleshooting Guidance**: Error detection and resolution suggestions
+- ✅ **Personalized Recommendations**: Adaptive course/lab suggestions
+- ✅ **Q&A Support**: Natural language question answering
+- ✅ **Learning Path Optimization**: AI-driven learning path adjustments
 
 ### Architecture Mapping
-- **Service**: `InventoryService`, `InventorySyncService` (ARCHITECTURE.md)
-- **Components**: `InventoryManager`, `StockReserver`, `ReconciliationEngine`, `SyncManager`
-- **Pattern**: Event Sourcing (for inventory changes), Optimistic Locking (for concurrency)
-- **Technology**: Redis (real-time cache), PostgreSQL (persistent storage), Event streaming
+- **Service**: `AIAssistantService`, `RecommendationEngine`, `ContextAnalyzer` (ARCHITECTURE.md)
+- **Components**: `HintGenerator`, `ErrorAnalyzer`, `RecommendationService`, `ChatBot`
+- **Pattern**: Strategy Pattern (for AI models), Chain of Responsibility (for hint generation)
+- **Technology**: OpenAI API, LangChain, Vector Database (Pinecone/Weaviate), RAG
 
 ### Feature Mapping
 - **Feature ID**: F3 (FEATURES.md)
 - **Priority**: P0 (Critical)
 - **User Stories**: US3.1, US3.2, US3.3 (FEATURES.md)
-- **Acceptance Criteria**: FR3.1-FR3.9, NFR3.1-NFR3.3 (FEATURES.md)
+- **Acceptance Criteria**: FR3.1-FR3.10, NFR3.1-NFR3.4 (FEATURES.md)
 
 ### Business Impact
-- **Value Proposition**: Prevents order cancellations, improves customer trust (BUSINESS_PERSPECTIVE.md)
-- **Revenue Driver**: Reduces refunds, improves operational efficiency
-- **Competitive Advantage**: Real-time accuracy prevents customer dissatisfaction
+- **Value Proposition**: Reduced instructor overhead, 24/7 assistance (BUSINESS_PERSPECTIVE.md)
+- **Revenue Driver**: Premium AI tutor subscription tier
+- **Competitive Advantage**: Personalized learning at scale
 
 ### Implementation Status
 - ✅ Architecture designed
@@ -117,35 +117,35 @@ This document serves as the **single source of truth** for the core requirements
 
 ---
 
-## 4. Dynamic Delivery Partner Assignment
+## 4. Scalability & Reliability
 
 ### Requirement Statement
-**Dynamic delivery partner assignment and monitoring throughout the delivery journey, optimizing for proximity, availability, capacity, and workload.**
+**Handle high concurrent usage for videos and labs with predictable performance, support rapid onboarding of new courses, labs, and users without performance degradation.**
 
 ### Key Components
-- ✅ **Partner Onboarding**: Registration and verification of delivery partners
-- ✅ **Real-Time Availability**: Track partner availability and location
-- ✅ **Assignment Algorithm**: Optimal partner selection based on multiple factors
-- ✅ **Re-Assignment**: Dynamic re-assignment if partner unavailable
-- ✅ **Route Optimization**: Optimal route calculation for deliveries
-- ✅ **Live Tracking**: Real-time tracking of delivery partner and order status
+- ✅ **Horizontal Scaling**: Auto-scaling for all services
+- ✅ **Video CDN**: Global content delivery with edge caching
+- ✅ **Lab Pool Management**: Pre-warmed container pools
+- ✅ **Load Balancing**: Intelligent traffic distribution
+- ✅ **High Availability**: Multi-region deployment
+- ✅ **Disaster Recovery**: Backup and failover mechanisms
 
 ### Architecture Mapping
-- **Service**: `DeliveryService`, `PartnerManagementService` (ARCHITECTURE.md)
-- **Components**: `PartnerMatcher`, `RouteOptimizer`, `TrackingService`, `AssignmentEngine`
-- **Pattern**: Strategy Pattern (for assignment algorithms), Observer Pattern (for tracking)
-- **Technology**: Location services (Google Maps API), Real-time messaging (WebSocket), ML models (for optimization)
+- **Service**: All services designed for scalability (ARCHITECTURE.md)
+- **Components**: `LoadBalancer`, `AutoScaler`, `HealthChecker`, `CircuitBreaker`
+- **Pattern**: Circuit Breaker, Bulkhead, Retry Pattern, CQRS
+- **Technology**: Kubernetes, Redis, CDN, Database replication
 
 ### Feature Mapping
 - **Feature ID**: F4 (FEATURES.md)
 - **Priority**: P0 (Critical)
 - **User Stories**: US4.1, US4.2, US4.3 (FEATURES.md)
-- **Acceptance Criteria**: FR4.1-FR4.10, NFR4.1-NFR4.3 (FEATURES.md)
+- **Acceptance Criteria**: FR4.1-FR4.8, NFR4.1-NFR4.5 (FEATURES.md)
 
 ### Business Impact
-- **Value Proposition**: Ensures SLA compliance, improves delivery reliability (BUSINESS_PERSPECTIVE.md)
-- **Revenue Driver**: Reduces delivery failures, improves customer satisfaction
-- **Competitive Advantage**: Optimized assignment reduces delivery time and costs
+- **Value Proposition**: Reliable learning experience globally (BUSINESS_PERSPECTIVE.md)
+- **Revenue Driver**: Can handle growth to millions of users
+- **Competitive Advantage**: No downtime during peak learning hours
 
 ### Implementation Status
 - ✅ Architecture designed
@@ -154,35 +154,35 @@ This document serves as the **single source of truth** for the core requirements
 
 ---
 
-## 5. End-to-End Order Lifecycle Management
+## 5. User Experience & Accessibility
 
 ### Requirement Statement
-**End-to-end order lifecycle management from creation to delivery and closure, with real-time order status, ETA updates, and proactive customer communication.**
+**Deliver a consistent web-based experience across devices, supporting multiple languages and regions as the platform grows.**
 
 ### Key Components
-- ✅ **Order Creation**: Fast and frictionless ordering with minimal steps
-- ✅ **Order Processing**: Automated order processing workflow
-- ✅ **Status Tracking**: Real-time order status updates
-- ✅ **ETA Calculation**: Dynamic ETA updates based on progress
-- ✅ **Customer Communication**: Proactive notifications at each stage
-- ✅ **Order Closure**: Completion, cancellation, refund handling
+- ✅ **Responsive Design**: Mobile, tablet, and desktop support
+- ✅ **Cross-Browser Compatibility**: Support for major browsers
+- ✅ **Multi-Language Support**: Internationalization (i18n)
+- ✅ **Accessibility**: WCAG 2.1 compliance
+- ✅ **Progressive Enhancement**: Core functionality without JavaScript
+- ✅ **Offline Capabilities**: PWA support for limited offline access
 
 ### Architecture Mapping
-- **Service**: `OrderService`, `NotificationService`, `TrackingService` (ARCHITECTURE.md)
-- **Components**: `OrderManager`, `StatusTracker`, `ETACalculator`, `NotificationEngine`
-- **Pattern**: State Machine Pattern (for order states), Observer Pattern (for notifications)
-- **Technology**: Event-driven architecture, WebSocket (real-time updates), Notification services (SMS, Push, Email)
+- **Service**: `UIService`, `LocalizationService`, `AccessibilityService` (ARCHITECTURE.md)
+- **Components**: `ResponsiveRenderer`, `LanguageManager`, `A11yValidator`
+- **Pattern**: Adapter Pattern (for device types), Strategy Pattern (for themes)
+- **Technology**: React, PWA, i18next, ARIA
 
 ### Feature Mapping
 - **Feature ID**: F5 (FEATURES.md)
-- **Priority**: P0 (Critical)
+- **Priority**: P1 (High)
 - **User Stories**: US5.1, US5.2, US5.3 (FEATURES.md)
-- **Acceptance Criteria**: FR5.1-FR5.12, NFR5.1-NFR5.3 (FEATURES.md)
+- **Acceptance Criteria**: FR5.1-FR5.8, NFR5.1-NFR5.4 (FEATURES.md)
 
 ### Business Impact
-- **Value Proposition**: Transparent order tracking, reduces customer anxiety (BUSINESS_PERSPECTIVE.md)
-- **Revenue Driver**: Improves customer retention, reduces support calls
-- **Competitive Advantage**: Proactive communication builds trust
+- **Value Proposition**: Global reach and inclusive learning (BUSINESS_PERSPECTIVE.md)
+- **Revenue Driver**: Access to international markets
+- **Competitive Advantage**: Best-in-class mobile learning experience
 
 ### Implementation Status
 - ✅ Architecture designed
@@ -191,35 +191,35 @@ This document serves as the **single source of truth** for the core requirements
 
 ---
 
-## 6. Seamless Payment & Refund Management
+## 6. Security & Data Protection
 
 ### Requirement Statement
-**Seamless payment experience with support for multiple payment modes and refunds, ensuring secure handling of transactions.**
+**Ensure secure, isolated lab environments and protect learner data through comprehensive security measures and compliance with data protection regulations.**
 
 ### Key Components
-- ✅ **Multiple Payment Modes**: UPI, Credit/Debit Cards, Wallets, COD
-- ✅ **Payment Processing**: Secure payment gateway integration
-- ✅ **Refund Management**: Automated refund processing
-- ✅ **Payment Security**: PCI-DSS compliance, encryption
-- ✅ **Transaction History**: Complete transaction records
-- ✅ **Failed Payment Handling**: Retry mechanisms, alternative payment options
+- ✅ **Lab Isolation**: Network and process isolation per learner
+- ✅ **Data Encryption**: Encryption at rest and in transit
+- ✅ **Authentication**: Multi-factor authentication support
+- ✅ **Authorization**: Role-based access control (RBAC)
+- ✅ **Audit Logging**: Comprehensive security audit trails
+- ✅ **Compliance**: GDPR, SOC 2 compliance
 
 ### Architecture Mapping
-- **Service**: `PaymentService`, `RefundService` (ARCHITECTURE.md)
-- **Components**: `PaymentGateway`, `RefundProcessor`, `TransactionManager`, `SecurityManager`
-- **Pattern**: Adapter Pattern (for payment gateways), Circuit Breaker (for gateway failures)
-- **Technology**: Payment gateways (Razorpay, Stripe), Secure storage, Encryption
+- **Service**: `SecurityService`, `AuthService`, `AuditService` (ARCHITECTURE.md)
+- **Components**: `IdentityManager`, `AccessController`, `EncryptionService`, `AuditLogger`
+- **Pattern**: Decorator Pattern (for security), Proxy Pattern (for access control)
+- **Technology**: OAuth 2.0, JWT, TLS 1.3, HashiCorp Vault
 
 ### Feature Mapping
 - **Feature ID**: F6 (FEATURES.md)
 - **Priority**: P0 (Critical)
 - **User Stories**: US6.1, US6.2, US6.3 (FEATURES.md)
-- **Acceptance Criteria**: FR6.1-FR6.10, NFR6.1-NFR6.3 (FEATURES.md)
+- **Acceptance Criteria**: FR6.1-FR6.10, NFR6.1-NFR6.4 (FEATURES.md)
 
 ### Business Impact
-- **Value Proposition**: Multiple payment options improve conversion (BUSINESS_PERSPECTIVE.md)
-- **Revenue Driver**: Reduces cart abandonment, enables COD for wider reach
-- **Competitive Advantage**: Fast refunds improve customer trust
+- **Value Proposition**: Trust and compliance (BUSINESS_PERSPECTIVE.md)
+- **Revenue Driver**: Enterprise customer requirements
+- **Competitive Advantage**: SOC 2 certified platform
 
 ### Implementation Status
 - ✅ Architecture designed
@@ -228,35 +228,35 @@ This document serves as the **single source of truth** for the core requirements
 
 ---
 
-## 7. Scalability & Resilience
+## 7. Progress Tracking & Analytics
 
 ### Requirement Statement
-**High scalability to handle peak demand, flash sales, and rapid city expansion, with high availability and fault tolerance with graceful handling of partial system failures.**
+**Comprehensive tracking of learner progress, completion rates, and learning analytics to provide insights for both learners and instructors.**
 
 ### Key Components
-- ✅ **Horizontal Scaling**: Auto-scaling based on load
-- ✅ **Peak Load Handling**: Traffic spike management (flash sales, festivals)
-- ✅ **Fault Tolerance**: Graceful degradation during failures
-- ✅ **Multi-City Support**: Rapid expansion to new cities
-- ✅ **Disaster Recovery**: Backup and recovery mechanisms
-- ✅ **Performance Optimization**: Caching, CDN, database optimization
+- ✅ **Progress Dashboard**: Visual progress indicators for learners
+- ✅ **Completion Tracking**: Course, module, and lesson completion rates
+- ✅ **Time Analytics**: Learning time tracking and patterns
+- ✅ **Skill Assessment**: Competency tracking based on lab performance
+- ✅ **Instructor Analytics**: Class-level progress and engagement metrics
+- ✅ **Learning Insights**: AI-driven recommendations based on analytics
 
 ### Architecture Mapping
-- **Service**: All services designed for scalability (ARCHITECTURE.md)
-- **Components**: `LoadBalancer`, `AutoScaler`, `CircuitBreaker`, `CacheManager`
-- **Pattern**: Circuit Breaker, Bulkhead, Retry Pattern, CQRS (for read/write separation)
-- **Technology**: Kubernetes (orchestration), Redis (caching), CDN, Database replication
+- **Service**: `ProgressService`, `AnalyticsService`, `ReportingService` (ARCHITECTURE.md)
+- **Components**: `ProgressTracker`, `AnalyticsAggregator`, `InsightGenerator`
+- **Pattern**: Observer Pattern (for tracking), CQRS (for analytics)
+- **Technology**: PostgreSQL, ClickHouse (analytics), Redis (real-time)
 
 ### Feature Mapping
 - **Feature ID**: F7 (FEATURES.md)
-- **Priority**: P0 (Critical)
+- **Priority**: P1 (High)
 - **User Stories**: US7.1, US7.2, US7.3 (FEATURES.md)
-- **Acceptance Criteria**: FR7.1-FR7.8, NFR7.1-NFR7.5 (FEATURES.md)
+- **Acceptance Criteria**: FR7.1-FR7.8, NFR7.1-NFR7.3 (FEATURES.md)
 
 ### Business Impact
-- **Value Proposition**: System reliability ensures business continuity (BUSINESS_PERSPECTIVE.md)
-- **Revenue Driver**: Handles growth without performance degradation
-- **Competitive Advantage**: Can scale faster than competitors
+- **Value Proposition**: Data-driven learning improvements (BUSINESS_PERSPECTIVE.md)
+- **Revenue Driver**: Enterprise reporting features
+- **Competitive Advantage**: Actionable learning insights
 
 ### Implementation Status
 - ✅ Architecture designed
@@ -265,72 +265,35 @@ This document serves as the **single source of truth** for the core requirements
 
 ---
 
-## 8. Operational Visibility & Monitoring
+## 8. Content Management
 
 ### Requirement Statement
-**Operational visibility with monitoring, alerts, and end-to-end traceability, ensuring secure handling of customer data, transactions, and operational access.**
+**Comprehensive tools for instructors and content admins to create, manage, and publish courses, labs, and assessments efficiently.**
 
 ### Key Components
-- ✅ **Real-Time Monitoring**: System health, performance metrics
-- ✅ **Alerting**: Proactive alerts for issues
-- ✅ **Tracing**: End-to-end request tracing
-- ✅ **Logging**: Comprehensive logging for debugging
-- ✅ **Security Monitoring**: Security event tracking
-- ✅ **Dashboards**: Operational dashboards for stakeholders
+- ✅ **Course Builder**: Visual course creation interface
+- ✅ **Video Upload**: Batch upload with transcoding
+- ✅ **Lab Template Management**: Reusable lab environment templates
+- ✅ **Assessment Builder**: Quiz and assignment creation tools
+- ✅ **Content Versioning**: Version control for course content
+- ✅ **Publishing Workflow**: Draft, review, publish workflow
 
 ### Architecture Mapping
-- **Service**: `MonitoringService`, `LoggingService`, `SecurityService` (ARCHITECTURE.md)
-- **Components**: `MetricsCollector`, `AlertManager`, `TracingEngine`, `AuditLogger`
-- **Pattern**: Observer Pattern (for monitoring), Decorator Pattern (for logging)
-- **Technology**: Prometheus, Grafana, ELK Stack, Jaeger, Security tools
+- **Service**: `ContentManagementService`, `MediaService`, `WorkflowService` (ARCHITECTURE.md)
+- **Components**: `CourseBuilder`, `MediaProcessor`, `TemplateManager`, `WorkflowEngine`
+- **Pattern**: Builder Pattern (for course creation), State Pattern (for publishing)
+- **Technology**: S3, FFmpeg, Git-based versioning
 
 ### Feature Mapping
 - **Feature ID**: F8 (FEATURES.md)
 - **Priority**: P1 (High)
 - **User Stories**: US8.1, US8.2, US8.3 (FEATURES.md)
-- **Acceptance Criteria**: FR8.1-FR8.8, NFR8.1-NFR8.3 (FEATURES.md)
+- **Acceptance Criteria**: FR8.1-FR8.10, NFR8.1-NFR8.3 (FEATURES.md)
 
 ### Business Impact
-- **Value Proposition**: Proactive issue detection reduces downtime (BUSINESS_PERSPECTIVE.md)
-- **Revenue Driver**: Minimizes revenue loss from system issues
-- **Competitive Advantage**: Better operational excellence
-
-### Implementation Status
-- ✅ Architecture designed
-- ✅ Features specified
-- ⏳ Implementation pending
-
----
-
-## 9. Extensible Platform Design
-
-### Requirement Statement
-**Extensible platform design to support new cities, categories, and business models, enabling rapid expansion and feature additions.**
-
-### Key Components
-- ✅ **Multi-City Architecture**: City-specific configuration and data isolation
-- ✅ **Category Management**: Easy addition of new product categories
-- ✅ **Plugin Architecture**: Extensible for new integrations
-- ✅ **API-First Design**: APIs for third-party integrations
-- ✅ **Configuration Management**: Dynamic configuration without code changes
-- ✅ **Feature Flags**: Gradual feature rollout
-
-### Architecture Mapping
-- **Service**: `ConfigurationService`, `CategoryService` (ARCHITECTURE.md)
-- **Components**: `CityManager`, `CategoryManager`, `PluginManager`, `FeatureFlagManager`
-- **Pattern**: Strategy Pattern (for different business models), Factory Pattern (for extensibility)
-- **Technology**: Microservices architecture, API Gateway, Configuration management tools
-
-### Feature Mapping
-- **Feature ID**: F9 (FEATURES.md)
-- **Priority**: P1 (High)
-- **User Stories**: US9.1, US9.2, US9.3 (FEATURES.md)
-- **Acceptance Criteria**: FR9.1-FR9.6, NFR9.1-NFR9.2 (FEATURES.md)
-
-### Business Impact
-- **Value Proposition**: Enables rapid expansion and innovation (BUSINESS_PERSPECTIVE.md)
-- **Revenue Driver**: Faster time-to-market for new cities/categories
-- **Competitive Advantage**: Can adapt quickly to market changes
+- **Value Proposition**: Efficient content creation at scale (BUSINESS_PERSPECTIVE.md)
+- **Revenue Driver**: Instructor marketplace and partnerships
+- **Competitive Advantage**: Rapid course creation pipeline
 
 ### Implementation Status
 - ✅ Architecture designed
@@ -343,15 +306,14 @@ This document serves as the **single source of truth** for the core requirements
 
 | # | Requirement | Priority | Status |
 |---|-------------|----------|--------|
-| 1 | Location-Aware Product Discovery & Ordering | P0 | ✅ Designed |
-| 2 | Ultra-Fast Order Fulfillment (10-20 Min SLA) | P0 | ✅ Designed |
-| 3 | Real-Time Inventory Management | P0 | ✅ Designed |
-| 4 | Dynamic Delivery Partner Assignment | P0 | ✅ Designed |
-| 5 | End-to-End Order Lifecycle Management | P0 | ✅ Designed |
-| 6 | Seamless Payment & Refund Management | P0 | ✅ Designed |
-| 7 | Scalability & Resilience | P0 | ✅ Designed |
-| 8 | Operational Visibility & Monitoring | P1 | ✅ Designed |
-| 9 | Extensible Platform Design | P1 | ✅ Designed |
+| 1 | Learning Content Delivery | P0 | ✅ Designed |
+| 2 | Hands-On Lab Environment | P0 | ✅ Designed |
+| 3 | AI-Driven Learning Assistance | P0 | ✅ Designed |
+| 4 | Scalability & Reliability | P0 | ✅ Designed |
+| 5 | User Experience & Accessibility | P1 | ✅ Designed |
+| 6 | Security & Data Protection | P0 | ✅ Designed |
+| 7 | Progress Tracking & Analytics | P1 | ✅ Designed |
+| 8 | Content Management | P1 | ✅ Designed |
 
 ---
 
@@ -377,39 +339,39 @@ This document serves as the **single source of truth** for the core requirements
 ## Assumptions & Constraints
 
 ### Assumptions
-1. Customers have smartphones with GPS capabilities
-2. Dark stores have basic infrastructure (internet, barcode scanners)
-3. Delivery partners have smartphones and vehicles
-4. Payment gateways are available and reliable
-5. Customers are willing to pay premium for 10-20 minute delivery
+1. Learners have modern web browsers with WebSocket support
+2. Instructors have basic technical knowledge for content creation
+3. Cloud infrastructure is available for lab provisioning
+4. AI APIs (OpenAI) are reliable and available
+5. Learners are willing to pay for premium features
 
 ### Constraints
-1. 10-20 minute SLA is non-negotiable
-2. Must prevent overselling (inventory accuracy critical)
-3. Must support multiple metro cities from day one
-4. Must handle peak traffic (flash sales, festivals)
-5. Must comply with data privacy regulations (GDPR, local laws)
+1. Lab sessions must be isolated for security
+2. Video content must be DRM-protected
+3. Must support 100,000+ concurrent lab sessions
+4. Must comply with GDPR and data protection laws
+5. AI responses must be monitored for accuracy
 
 ---
 
 ## Success Criteria
 
 ### Technical Success
-- ✅ 99.9% uptime
+- ✅ 99.9% uptime for video streaming
+- ✅ < 5 second lab environment startup time
 - ✅ < 2 second API response time (p95)
-- ✅ < 0.1% order cancellation due to inventory issues
-- ✅ 95%+ orders delivered within SLA
-- ✅ Support 10x traffic spikes without degradation
+- ✅ Support 100,000+ concurrent users
+- ✅ 99.99% lab isolation (no cross-contamination)
 
 ### Business Success
-- ✅ 1M+ orders per month (Year 1)
-- ✅ < 2% order cancellation rate
-- ✅ 4.5+ customer rating
-- ✅ < 5% delivery partner churn
-- ✅ Expand to 5+ cities in Year 1
+- ✅ 50,000+ monthly active learners (Year 1)
+- ✅ 80%+ course completion rate
+- ✅ 4.5+ learner satisfaction rating
+- ✅ 500+ courses available
+- ✅ Expansion to 10+ technologies
 
 ---
 
-**Last Updated**: January 2025
+**Last Updated**: January 2026
 **Version**: 1.0
 **Status**: Design Complete, Implementation Pending

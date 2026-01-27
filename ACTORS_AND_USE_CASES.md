@@ -1,9 +1,11 @@
-# FlashKart Quick Commerce - Actors and Use Cases
+# LearnCraft - Actors and Use Cases
+
+> **⚠️ Core Requirements**: Each use case is mapped to the core requirements defined in [KEY_REQUIREMENTS.md](./KEY_REQUIREMENTS.md).
 
 ## Table of Contents
 1. [Actors](#actors)
 2. [Use Case Diagram](#use-case-diagram)
-3. [Detailed Use Cases](#detailed-use-cases)
+3. [Use Case Details](#use-case-details)
 4. [Use Case Relationships](#use-case-relationships)
 
 ---
@@ -12,700 +14,777 @@
 
 ### Primary Actors
 
-#### 1. Customer
-**Description**: End user who places orders for groceries, daily essentials, and snacks
-**Characteristics**:
-- Uses mobile app or web application
-- Has delivery address
-- Makes payments
-- Tracks orders
+#### 1. Learner
+- **Description**: An individual using the platform to learn new skills
+- **Characteristics**:
+  - May be a beginner or experienced professional
+  - Self-directed learning
+  - Expects hands-on practice opportunities
+  - Needs progress tracking and completion certificates
+- **Goals**:
+  - Watch video tutorials
+  - Complete hands-on labs
+  - Track learning progress
+  - Earn certificates
+  - Get help when stuck
 
-**Responsibilities**:
-- Browse products
-- Place orders
-- Make payments
-- Track orders
-- Manage account
+#### 2. Instructor
+- **Description**: A subject matter expert who creates and manages courses
+- **Characteristics**:
+  - Technical expertise in one or more domains
+  - Creates video content and lab exercises
+  - Monitors learner progress and engagement
+  - Earns revenue from course sales
+- **Goals**:
+  - Create and publish courses
+  - Design hands-on labs
+  - Track learner engagement
+  - Earn revenue
+  - Get feedback on content
 
----
-
-#### 2. Dark Store Staff
-**Description**: Staff working at dark stores who fulfill orders
-**Characteristics**:
-- Uses tablet/web interface
-- Has access to inventory
-- Picks and packs orders
-- Updates order status
-
-**Responsibilities**:
-- View order queue
-- Pick products
-- Pack orders
-- Update inventory
-- Mark orders as ready
-
----
-
-#### 3. Delivery Partner
-**Description**: Independent delivery partner who delivers orders to customers
-**Characteristics**:
-- Uses mobile app
-- Has vehicle (bike/scooter)
-- Tracks location
-- Manages deliveries
-
-**Responsibilities**:
-- Accept order assignments
-- Pick up orders from stores
-- Deliver orders to customers
-- Update delivery status
-- Track earnings
-
----
+#### 3. Content Admin
+- **Description**: Platform administrator who manages content quality and catalog
+- **Characteristics**:
+  - Reviews and approves content
+  - Manages course catalog
+  - Handles content policies
+  - Curates featured content
+- **Goals**:
+  - Ensure content quality
+  - Manage content catalog
+  - Review submitted courses
+  - Handle content issues
 
 ### Secondary Actors
 
 #### 4. System Administrator
-**Description**: Internal staff managing the platform
-**Characteristics**:
-- Has admin access
-- Manages configurations
-- Monitors system health
-- Handles escalations
+- **Description**: Technical administrator managing platform operations
+- **Characteristics**:
+  - Manages user accounts and permissions
+  - Monitors system health
+  - Handles technical issues
+  - Manages platform configuration
+- **Goals**:
+  - Maintain platform availability
+  - Manage user access
+  - Monitor system performance
+  - Handle support escalations
 
-**Responsibilities**:
-- Manage dark stores
-- Manage delivery partners
-- Configure pricing
-- Monitor operations
-- Handle exceptions
+#### 5. AI Service
+- **Description**: External AI/LLM service providing intelligent assistance
+- **Characteristics**:
+  - Generates video summaries
+  - Provides contextual hints
+  - Answers learner questions
+  - Generates recommendations
+- **Goals**:
+  - Provide accurate responses
+  - Offer helpful hints
+  - Generate relevant recommendations
 
----
+#### 6. Lab Infrastructure
+- **Description**: Container orchestration system managing lab environments
+- **Characteristics**:
+  - Provisions lab containers
+  - Manages resource allocation
+  - Ensures isolation and security
+  - Handles session lifecycle
+- **Goals**:
+  - Provision labs quickly (< 5s)
+  - Maintain isolation
+  - Manage resources efficiently
 
-#### 5. Payment Gateway
-**Description**: External payment processing service
-**Characteristics**:
-- Processes payments
-- Handles refunds
-- Provides transaction status
-
-**Responsibilities**:
-- Process payment requests
-- Return payment status
-- Process refunds
-- Provide transaction history
-
----
-
-#### 6. Maps Service
-**Description**: External mapping and routing service (e.g., Google Maps)
-**Characteristics**:
-- Provides geocoding
-- Calculates routes
-- Provides navigation
-
-**Responsibilities**:
-- Geocode addresses
-- Calculate distances
-- Optimize routes
-- Provide navigation
-
----
-
-#### 7. Notification Service
-**Description**: External service for sending notifications (SMS, Push, Email)
-**Characteristics**:
-- Sends SMS
-- Sends push notifications
-- Sends emails
-
-**Responsibilities**:
-- Send order notifications
-- Send status updates
-- Send promotional messages
+#### 7. Payment Gateway
+- **Description**: External payment processing service
+- **Characteristics**:
+  - Processes subscription payments
+  - Handles refunds
+  - Manages payment methods
+  - Provides transaction records
+- **Goals**:
+  - Process payments securely
+  - Handle subscription billing
+  - Support multiple payment methods
 
 ---
 
 ## Use Case Diagram
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        FlashKart System                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │                    Customer Use Cases                     │  │
-│  ├──────────────────────────────────────────────────────────┤  │
-│  │  UC1: Browse Products                                    │  │
-│  │  UC2: Search Products                                    │  │
-│  │  UC3: View Product Details                               │  │
-│  │  UC4: Add to Cart                                        │  │
-│  │  UC5: View Cart                                          │  │
-│  │  UC6: Place Order                                        │  │
-│  │  UC7: Make Payment                                       │  │
-│  │  UC8: Track Order                                         │  │
-│  │  UC9: Cancel Order                                        │  │
-│  │  UC10: View Order History                                 │  │
-│  │  UC11: Manage Addresses                                   │  │
-│  │  UC12: Rate Order                                         │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │              Dark Store Staff Use Cases                   │  │
-│  ├──────────────────────────────────────────────────────────┤  │
-│  │  UC13: View Order Queue                                  │  │
-│  │  UC14: Pick Products                                      │  │
-│  │  UC15: Pack Order                                         │  │
-│  │  UC16: Update Inventory                                   │  │
-│  │  UC17: Mark Order Ready                                   │  │
-│  │  UC18: Scan Barcode                                       │  │
-│  │  UC19: View Inventory                                      │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │            Delivery Partner Use Cases                     │  │
-│  ├──────────────────────────────────────────────────────────┤  │
-│  │  UC20: Accept Order Assignment                            │  │
-│  │  UC21: Navigate to Store                                  │  │
-│  │  UC22: Pick Up Order                                      │  │
-│  │  UC23: Navigate to Customer                               │  │
-│  │  UC24: Deliver Order                                      │  │
-│  │  UC25: Update Location                                    │  │
-│  │  UC26: View Earnings                                      │  │
-│  │  UC27: Update Availability                                │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │          System Administrator Use Cases                  │  │
-│  ├──────────────────────────────────────────────────────────┤  │
-│  │  UC28: Manage Dark Stores                                 │  │
-│  │  UC29: Manage Delivery Partners                           │  │
-│  │  UC30: Configure Pricing                                  │  │
-│  │  UC31: View Analytics                                     │  │
-│  │  UC32: Handle Exceptions                                   │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-
-         Customer ──────┐
-                        │
-         Dark Store Staff ──────┐
-                                │
-         Delivery Partner ──────┼─────► FlashKart System
-                                │
-         System Admin ───────────┘
-                                │
-         Payment Gateway ───────┘
-         Maps Service ───────────┘
-         Notification Service ───┘
+```mermaid
+graph TB
+    subgraph Actors
+        L((Learner))
+        I((Instructor))
+        CA((Content Admin))
+        SA((System Admin))
+    end
+    
+    subgraph "Learning Use Cases"
+        UC1[Browse Courses]
+        UC2[Enroll in Course]
+        UC3[Watch Video Lesson]
+        UC4[Start Lab Session]
+        UC5[Complete Lab Exercise]
+        UC6[Get AI Assistance]
+        UC7[Take Assessment]
+        UC8[View Progress]
+        UC9[Earn Certificate]
+    end
+    
+    subgraph "Content Use Cases"
+        UC10[Create Course]
+        UC11[Upload Video]
+        UC12[Create Lab Template]
+        UC13[Publish Course]
+        UC14[View Analytics]
+    end
+    
+    subgraph "Admin Use Cases"
+        UC15[Review Course]
+        UC16[Manage Catalog]
+        UC17[Manage Users]
+        UC18[Monitor System]
+        UC19[Configure Platform]
+    end
+    
+    L --> UC1
+    L --> UC2
+    L --> UC3
+    L --> UC4
+    L --> UC5
+    L --> UC6
+    L --> UC7
+    L --> UC8
+    L --> UC9
+    
+    I --> UC10
+    I --> UC11
+    I --> UC12
+    I --> UC13
+    I --> UC14
+    
+    CA --> UC15
+    CA --> UC16
+    
+    SA --> UC17
+    SA --> UC18
+    SA --> UC19
 ```
 
 ---
 
-## Detailed Use Cases
+## Use Case Details
 
-### Customer Use Cases
+### UC1: Browse Courses
 
-#### UC1: Browse Products
-**Actor**: Customer
-**Preconditions**: Customer is logged in, location is set
+**Actor**: Learner
+**Priority**: P0
+**Requirement**: REQ-1 (Learning Content Delivery)
+
+**Description**: Learner browses the course catalog to find relevant courses.
+
+**Preconditions**:
+- Platform is accessible
+
 **Main Flow**:
-1. Customer opens app/web
-2. System detects location
-3. System shows products from nearby stores
-4. Customer browses products by category
-5. System displays products with availability and pricing
+1. Learner opens the course catalog
+2. System displays featured and recommended courses
+3. Learner filters by category, skill level, or technology
+4. System displays matching courses with ratings and previews
+5. Learner views course details (description, syllabus, reviews)
+6. Learner decides to enroll or continue browsing
 
-**Postconditions**: Customer can see products available for delivery
+**Alternative Flows**:
+- **A1**: Learner searches by keyword
+- **A2**: Learner sorts by popularity, rating, or recency
+
+**Postconditions**:
+- Learner has viewed course information
+- Browse activity is logged for recommendations
 
 ---
 
-#### UC2: Search Products
-**Actor**: Customer
-**Preconditions**: Customer is logged in, location is set
-**Main Flow**:
-1. Customer enters search query
-2. System searches products matching query
-3. System filters by location and availability
-4. System displays search results
-5. Customer can filter results (category, price, etc.)
+### UC2: Enroll in Course
 
-**Postconditions**: Customer sees relevant products
+**Actor**: Learner
+**Priority**: P0
+**Requirement**: REQ-1, REQ-6
+
+**Description**: Learner enrolls in a course to gain access to content.
+
+**Preconditions**:
+- Learner is authenticated
+- Course is published and available
+
+**Main Flow**:
+1. Learner clicks "Enroll" on course page
+2. System checks subscription status
+3. If included in subscription, enrollment is confirmed
+4. System creates enrollment record
+5. System adds course to learner's "My Courses"
+6. Learner receives confirmation email
+
+**Alternative Flows**:
+- **A1**: Course requires purchase → redirect to payment
+- **A2**: Course is full → add to waitlist
+- **A3**: Learner already enrolled → show course directly
+
+**Postconditions**:
+- Enrollment record created
+- Learner can access course content
 
 ---
 
-#### UC3: View Product Details
-**Actor**: Customer
-**Preconditions**: Customer is browsing products
-**Main Flow**:
-1. Customer clicks on a product
-2. System displays product details (images, description, price, availability)
-3. Customer can see nutritional info, reviews
-4. Customer can add to cart
+### UC3: Watch Video Lesson
 
-**Postconditions**: Customer has product details
+**Actor**: Learner
+**Priority**: P0
+**Requirement**: REQ-1 (Learning Content Delivery)
+
+**Description**: Learner watches a video lesson within a course.
+
+**Preconditions**:
+- Learner is enrolled in the course
+- Video lesson is available
+
+**Main Flow**:
+1. Learner navigates to lesson in course
+2. System loads video player with lesson content
+3. Learner plays video
+4. System tracks watch progress continuously
+5. Learner can adjust playback speed, quality, captions
+6. Upon completion, system marks lesson complete
+7. System shows AI-generated summary
+
+**Alternative Flows**:
+- **A1**: Learner creates bookmark at timestamp
+- **A2**: Learner takes notes during video
+- **A3**: Video loading fails → show error and retry option
+
+**Postconditions**:
+- Progress is saved
+- Completion status updated if finished
+- Summary available for review
 
 ---
 
-#### UC4: Add to Cart
-**Actor**: Customer
-**Preconditions**: Customer is viewing product details
+### UC4: Start Lab Session
+
+**Actor**: Learner
+**Priority**: P0
+**Requirement**: REQ-2 (Hands-On Lab Environment)
+
+**Description**: Learner starts a hands-on lab session to practice skills.
+
+**Preconditions**:
+- Learner is enrolled in the course
+- Lab is available for this module
+- Learner has lab session quota
+
 **Main Flow**:
-1. Customer selects quantity
-2. Customer clicks "Add to Cart"
-3. System checks inventory availability
-4. System adds product to cart
-5. System shows cart count
+1. Learner clicks "Start Lab" button
+2. System checks session limits and availability
+3. System provisions isolated container from pool
+4. System configures environment per lab template
+5. System generates secure terminal URL
+6. Learner is connected to browser-based terminal/IDE
+7. System displays lab instructions alongside
+8. Session timer starts
 
-**Postconditions**: Product added to cart
+**Alternative Flows**:
+- **A1**: No containers available → add to queue
+- **A2**: Session limit reached → show upgrade prompt
+- **A3**: Provisioning fails → retry or show error
 
-**Alternative Flow**:
-- 3a. If inventory unavailable, system shows error message
+**Postconditions**:
+- Lab session is active
+- Resources are allocated
+- Timer is running
 
 ---
 
-#### UC5: View Cart
-**Actor**: Customer
-**Preconditions**: Customer has items in cart
-**Main Flow**:
-1. Customer opens cart
-2. System displays cart items with prices
-3. Customer can update quantities
-4. Customer can remove items
-5. System calculates total amount
+### UC5: Complete Lab Exercise
 
-**Postconditions**: Customer sees cart contents
+**Actor**: Learner
+**Priority**: P0
+**Requirement**: REQ-2, REQ-7
+
+**Description**: Learner works through lab exercises and completes them.
+
+**Preconditions**:
+- Lab session is active
+- Lab instructions are available
+
+**Main Flow**:
+1. Learner follows lab instructions
+2. Learner executes commands in terminal/IDE
+3. System monitors learner progress
+4. Learner clicks "Check Solution" when ready
+5. System validates completion against success criteria
+6. System displays results (pass/fail with feedback)
+7. If passed, system marks lab as complete
+8. System generates lab activity summary
+
+**Alternative Flows**:
+- **A1**: Learner requests hint → UC6
+- **A2**: Learner resets environment
+- **A3**: Session expires → prompt to extend or save progress
+- **A4**: Partial completion → save progress
+
+**Postconditions**:
+- Lab completion recorded
+- Progress updated
+- Activity summary available
 
 ---
 
-#### UC6: Place Order
-**Actor**: Customer
-**Preconditions**: Customer has items in cart, delivery address is set
+### UC6: Get AI Assistance
+
+**Actor**: Learner
+**Priority**: P0
+**Requirement**: REQ-3 (AI-Driven Learning Assistance)
+
+**Description**: Learner requests help from AI assistant during learning.
+
+**Preconditions**:
+- Learner is in an active learning session (video or lab)
+- AI service is available
+
 **Main Flow**:
-1. Customer clicks "Checkout"
-2. System validates cart and inventory
-3. System assigns order to optimal dark store
-4. System reserves inventory
-5. System creates order
-6. System redirects to payment
+1. Learner clicks "Get Help" or types question
+2. System captures current learning context
+3. System sends query with context to AI service
+4. AI service generates relevant response
+5. System displays response to learner
+6. Learner can ask follow-up questions
+7. System logs interaction for improvement
 
-**Postconditions**: Order created, inventory reserved
+**Alternative Flows**:
+- **A1**: Learner requests hint (progressive difficulty)
+- **A2**: Learner reports AI response as unhelpful
+- **A3**: AI service unavailable → show cached/fallback help
 
-**Alternative Flow**:
-- 2a. If inventory unavailable, system removes unavailable items
-- 3a. If no store available, system shows error message
+**Postconditions**:
+- Learner received assistance
+- Interaction logged for analytics
 
 ---
 
-#### UC7: Make Payment
-**Actor**: Customer, Payment Gateway
-**Preconditions**: Order is created
+### UC7: Take Assessment
+
+**Actor**: Learner
+**Priority**: P1
+**Requirement**: REQ-7 (Progress Tracking)
+
+**Description**: Learner takes a quiz or assessment to validate knowledge.
+
+**Preconditions**:
+- Assessment is available
+- Learner has completed prerequisites (if any)
+
 **Main Flow**:
-1. Customer selects payment method
-2. Customer enters payment details
-3. System sends payment request to Payment Gateway
-4. Payment Gateway processes payment
-5. Payment Gateway returns status
-6. If successful, system confirms order
-7. System sends confirmation notification
+1. Learner starts assessment
+2. System presents questions one by one
+3. Learner submits answers
+4. System auto-grades objective questions
+5. System calculates final score
+6. System displays results with explanations
+7. Score is recorded in progress
 
-**Postconditions**: Payment processed, order confirmed
+**Alternative Flows**:
+- **A1**: Timed assessment → enforce time limit
+- **A2**: Learner exits mid-assessment → save progress
+- **A3**: Learner retakes assessment
 
-**Alternative Flow**:
-- 5a. If payment fails, system shows error, allows retry
+**Postconditions**:
+- Assessment score recorded
+- Skill competency updated
 
 ---
 
-#### UC8: Track Order
-**Actor**: Customer
-**Preconditions**: Customer has placed an order
-**Main Flow**:
-1. Customer opens order tracking
-2. System fetches order status
-3. System displays current status (PENDING, CONFIRMED, PICKING, PACKED, IN_TRANSIT, DELIVERED)
-4. System shows ETA
-5. System shows delivery partner location (if assigned)
-6. System updates status in real-time
+### UC8: View Progress
 
-**Postconditions**: Customer sees order status
+**Actor**: Learner
+**Priority**: P0
+**Requirement**: REQ-7 (Progress Tracking)
+
+**Description**: Learner views their learning progress and statistics.
+
+**Preconditions**:
+- Learner is authenticated
+
+**Main Flow**:
+1. Learner opens progress dashboard
+2. System displays overall progress summary
+3. System shows per-course progress
+4. System displays learning streak and time spent
+5. System shows skill competency levels
+6. System displays achievements/badges earned
+
+**Alternative Flows**:
+- **A1**: Learner views detailed course progress
+- **A2**: Learner compares with peers (optional)
+
+**Postconditions**:
+- Learner is informed of progress
 
 ---
 
-#### UC9: Cancel Order
-**Actor**: Customer
-**Preconditions**: Order is placed and not yet delivered
+### UC9: Earn Certificate
+
+**Actor**: Learner
+**Priority**: P1
+**Requirement**: REQ-7
+
+**Description**: Learner earns a completion certificate for a course.
+
+**Preconditions**:
+- All required course components completed
+- Assessment score meets threshold (if required)
+
 **Main Flow**:
-1. Customer requests cancellation
-2. System checks order status
-3. If cancellable, system cancels order
-4. System releases reserved inventory
-5. System processes refund (if payment made)
-6. System sends cancellation notification
+1. Learner completes final course requirement
+2. System verifies all completion criteria
+3. System generates unique certificate
+4. System displays certificate preview
+5. Learner can download or share certificate
+6. Certificate is added to learner profile
 
-**Postconditions**: Order cancelled, inventory released, refund processed
+**Alternative Flows**:
+- **A1**: Learner shares certificate on LinkedIn
+- **A2**: Third party verifies certificate via URL
 
-**Alternative Flow**:
-- 3a. If order cannot be cancelled (already in transit), system shows error
+**Postconditions**:
+- Certificate issued and stored
+- Learner can share/download
 
 ---
 
-#### UC10: View Order History
-**Actor**: Customer
-**Preconditions**: Customer is logged in
-**Main Flow**:
-1. Customer opens order history
-2. System fetches past orders
-3. System displays orders with status, date, amount
-4. Customer can filter by date, status
-5. Customer can view order details
+### UC10: Create Course
 
-**Postconditions**: Customer sees order history
+**Actor**: Instructor
+**Priority**: P0
+**Requirement**: REQ-8 (Content Management)
+
+**Description**: Instructor creates a new course with modules and lessons.
+
+**Preconditions**:
+- Instructor is authenticated and approved
+- Has course creation permissions
+
+**Main Flow**:
+1. Instructor opens course creation wizard
+2. Instructor enters course metadata (title, description, category)
+3. Instructor defines course structure (modules, lessons)
+4. Instructor uploads or links video content (UC11)
+5. Instructor creates lab templates (UC12)
+6. Instructor adds assessments
+7. Instructor previews course
+8. Instructor saves as draft
+
+**Alternative Flows**:
+- **A1**: Instructor clones existing course as template
+- **A2**: Instructor imports content from external source
+
+**Postconditions**:
+- Course created as draft
+- Ready for video upload and lab creation
 
 ---
 
-#### UC11: Manage Addresses
-**Actor**: Customer
-**Preconditions**: Customer is logged in
-**Main Flow**:
-1. Customer opens address management
-2. System displays saved addresses
-3. Customer can add new address
-4. Customer can edit address
-5. Customer can delete address
-6. Customer can set default address
+### UC11: Upload Video
 
-**Postconditions**: Addresses updated
+**Actor**: Instructor
+**Priority**: P0
+**Requirement**: REQ-1, REQ-8
+
+**Description**: Instructor uploads video content for lessons.
+
+**Preconditions**:
+- Course is in draft mode
+- Instructor has upload permissions
+
+**Main Flow**:
+1. Instructor selects lesson to add video
+2. Instructor uploads video file(s)
+3. System validates video format and size
+4. System initiates transcoding pipeline
+5. System generates multiple quality versions
+6. System extracts transcript for captions/search
+7. System notifies instructor when complete
+8. Video is attached to lesson
+
+**Alternative Flows**:
+- **A1**: Batch upload multiple videos
+- **A2**: Video processing fails → retry or support request
+
+**Postconditions**:
+- Video processed and available
+- Transcript generated
+- Video attached to lesson
 
 ---
 
-#### UC12: Rate Order
-**Actor**: Customer
-**Preconditions**: Order is delivered
-**Main Flow**:
-1. Customer receives rating prompt
-2. Customer rates order (1-5 stars)
-3. Customer provides feedback (optional)
-4. System saves rating
-5. System updates product/store ratings
+### UC12: Create Lab Template
 
-**Postconditions**: Rating saved
+**Actor**: Instructor
+**Priority**: P0
+**Requirement**: REQ-2, REQ-8
+
+**Description**: Instructor creates a lab template for hands-on exercises.
+
+**Preconditions**:
+- Course is in draft mode
+- Instructor has lab creation permissions
+
+**Main Flow**:
+1. Instructor opens lab template builder
+2. Instructor selects base environment (language/stack)
+3. Instructor configures environment settings
+4. Instructor writes initialization script
+5. Instructor adds lab instructions (markdown)
+6. Instructor defines success criteria
+7. Instructor tests lab template
+8. Instructor saves template
+
+**Alternative Flows**:
+- **A1**: Instructor uses existing template as base
+- **A2**: Lab test fails → debug and retry
+
+**Postconditions**:
+- Lab template created
+- Ready for publishing
 
 ---
 
-### Dark Store Staff Use Cases
+### UC13: Publish Course
 
-#### UC13: View Order Queue
-**Actor**: Dark Store Staff
-**Preconditions**: Staff is logged in
+**Actor**: Instructor
+**Priority**: P0
+**Requirement**: REQ-8
+
+**Description**: Instructor submits course for review and publication.
+
+**Preconditions**:
+- Course is complete (all content uploaded)
+- Course passed basic validation
+
 **Main Flow**:
-1. Staff opens order queue
-2. System displays pending orders
-3. System shows order priority (SLA-based)
-4. Staff can filter by status
-5. Staff can select order to fulfill
+1. Instructor clicks "Submit for Review"
+2. System validates course completeness
+3. System notifies Content Admin for review (UC15)
+4. Content Admin reviews and approves
+5. System publishes course to catalog
+6. System notifies instructor of publication
+7. Course becomes available to learners
 
-**Postconditions**: Staff sees order queue
+**Alternative Flows**:
+- **A1**: Review rejected → feedback provided for revision
+- **A2**: Instructor self-publishes (if approved level)
+
+**Postconditions**:
+- Course published and available
+- Instructor can view analytics
 
 ---
 
-#### UC14: Pick Products
-**Actor**: Dark Store Staff
-**Preconditions**: Order is assigned to store
-**Main Flow**:
-1. Staff selects order
-2. System displays order items
-3. Staff picks products from shelves
-4. Staff scans barcode to verify
-5. System updates inventory
-6. System marks item as picked
+### UC14: View Analytics
 
-**Postconditions**: Products picked, inventory updated
+**Actor**: Instructor
+**Priority**: P1
+**Requirement**: REQ-7
+
+**Description**: Instructor views analytics for their courses.
+
+**Preconditions**:
+- Course is published
+- Learners have enrolled
+
+**Main Flow**:
+1. Instructor opens analytics dashboard
+2. System displays course-level metrics
+3. Instructor views enrollment numbers
+4. Instructor views completion rates per module
+5. Instructor views drop-off points
+6. Instructor views learner ratings and reviews
+7. Instructor views revenue (if applicable)
+
+**Alternative Flows**:
+- **A1**: Export analytics data
+- **A2**: Compare across courses
+
+**Postconditions**:
+- Instructor informed of course performance
 
 ---
 
-#### UC15: Pack Order
-**Actor**: Dark Store Staff
-**Preconditions**: All products are picked
-**Main Flow**:
-1. Staff packs products in bag
-2. Staff scans order barcode
-3. System verifies all items packed
-4. System marks order as packed
-5. System updates order status
+### UC15: Review Course
 
-**Postconditions**: Order packed, status updated
+**Actor**: Content Admin
+**Priority**: P1
+**Requirement**: REQ-8
+
+**Description**: Content Admin reviews submitted courses for quality.
+
+**Preconditions**:
+- Course submitted for review
+
+**Main Flow**:
+1. Content Admin opens review queue
+2. System displays courses pending review
+3. Admin selects course to review
+4. Admin reviews content quality, accuracy, completeness
+5. Admin tests lab environments
+6. Admin approves or requests changes
+7. System notifies instructor of decision
+
+**Alternative Flows**:
+- **A1**: Admin escalates for expert review
+- **A2**: Admin flags content for policy violation
+
+**Postconditions**:
+- Course approved or feedback provided
+- Status updated accordingly
 
 ---
 
-#### UC16: Update Inventory
-**Actor**: Dark Store Staff
-**Preconditions**: Staff is logged in
-**Main Flow**:
-1. Staff scans product barcode
-2. Staff enters quantity change
-3. Staff selects reason (restock, damaged, etc.)
-4. System updates inventory
-5. System syncs with central inventory
+### UC16: Manage Catalog
 
-**Postconditions**: Inventory updated
+**Actor**: Content Admin
+**Priority**: P1
+**Requirement**: REQ-8
+
+**Description**: Content Admin manages the course catalog.
+
+**Preconditions**:
+- Admin has catalog management permissions
+
+**Main Flow**:
+1. Admin opens catalog management
+2. Admin views all published courses
+3. Admin can feature/unfeature courses
+4. Admin can organize categories/collections
+5. Admin can hide/unpublish courses
+6. Admin can set promotional banners
+
+**Alternative Flows**:
+- **A1**: Create curated learning paths
+- **A2**: Respond to user reports about courses
+
+**Postconditions**:
+- Catalog updated as needed
 
 ---
 
-#### UC17: Mark Order Ready
-**Actor**: Dark Store Staff
-**Preconditions**: Order is packed
-**Main Flow**:
-1. Staff marks order as ready
-2. System updates order status
-3. System assigns delivery partner
-4. System sends notification to delivery partner
-5. System sends notification to customer
+### UC17: Manage Users
 
-**Postconditions**: Order ready, delivery partner assigned
-
----
-
-#### UC18: Scan Barcode
-**Actor**: Dark Store Staff
-**Preconditions**: Staff is logged in
-**Main Flow**:
-1. Staff scans barcode
-2. System identifies product
-3. System displays product information
-4. System allows inventory update or order fulfillment
-
-**Postconditions**: Product identified
-
----
-
-#### UC19: View Inventory
-**Actor**: Dark Store Staff
-**Preconditions**: Staff is logged in
-**Main Flow**:
-1. Staff opens inventory view
-2. System displays current inventory
-3. Staff can search products
-4. Staff can filter by low stock
-5. Staff can see inventory history
-
-**Postconditions**: Staff sees inventory status
-
----
-
-### Delivery Partner Use Cases
-
-#### UC20: Accept Order Assignment
-**Actor**: Delivery Partner
-**Preconditions**: Partner is available, order is ready
-**Main Flow**:
-1. Partner receives order assignment notification
-2. Partner views order details
-3. Partner accepts assignment
-4. System updates order status
-5. System provides navigation to store
-
-**Postconditions**: Order assigned to partner
-
-**Alternative Flow**:
-- 3a. If partner rejects, system assigns to another partner
-
----
-
-#### UC21: Navigate to Store
-**Actor**: Delivery Partner, Maps Service
-**Preconditions**: Order is assigned
-**Main Flow**:
-1. Partner clicks "Navigate to Store"
-2. System gets store location
-3. System calls Maps Service for route
-4. Maps Service returns route
-5. System displays navigation
-
-**Postconditions**: Partner navigates to store
-
----
-
-#### UC22: Pick Up Order
-**Actor**: Delivery Partner
-**Preconditions**: Partner is at store
-**Main Flow**:
-1. Partner arrives at store
-2. Partner scans order QR code
-3. System verifies order
-4. Partner receives order bag
-5. Partner confirms pickup
-6. System updates order status
-7. System provides navigation to customer
-
-**Postconditions**: Order picked up, status updated
-
----
-
-#### UC23: Navigate to Customer
-**Actor**: Delivery Partner, Maps Service
-**Preconditions**: Order is picked up
-**Main Flow**:
-1. Partner clicks "Navigate to Customer"
-2. System gets customer location
-3. System calls Maps Service for route
-4. Maps Service returns route
-5. System displays navigation
-6. System updates ETA
-
-**Postconditions**: Partner navigates to customer
-
----
-
-#### UC24: Deliver Order
-**Actor**: Delivery Partner
-**Preconditions**: Partner is at customer location
-**Main Flow**:
-1. Partner arrives at customer location
-2. Partner calls customer (if needed)
-3. Partner hands over order
-4. Partner confirms delivery
-5. System updates order status to DELIVERED
-6. System processes payment (if COD)
-7. System sends delivery notification
-8. System updates partner earnings
-
-**Postconditions**: Order delivered, status updated
-
----
-
-#### UC25: Update Location
-**Actor**: Delivery Partner
-**Preconditions**: Partner app is running
-**Main Flow**:
-1. System tracks partner location (GPS)
-2. System sends location updates periodically
-3. System updates partner location in database
-4. System uses location for order assignment
-
-**Postconditions**: Partner location updated
-
----
-
-#### UC26: View Earnings
-**Actor**: Delivery Partner
-**Preconditions**: Partner is logged in
-**Main Flow**:
-1. Partner opens earnings view
-2. System displays earnings summary
-3. Partner can see daily, weekly, monthly earnings
-4. Partner can see per-delivery earnings
-5. Partner can see payment history
-
-**Postconditions**: Partner sees earnings
-
----
-
-#### UC27: Update Availability
-**Actor**: Delivery Partner
-**Preconditions**: Partner is logged in
-**Main Flow**:
-1. Partner toggles availability status
-2. System updates partner availability
-3. If available, system includes partner in assignment pool
-4. If unavailable, system excludes partner from assignments
-
-**Postconditions**: Availability updated
-
----
-
-### System Administrator Use Cases
-
-#### UC28: Manage Dark Stores
 **Actor**: System Administrator
-**Preconditions**: Admin is logged in
-**Main Flow**:
-1. Admin opens dark store management
-2. Admin can add new store (location, capacity, inventory)
-3. Admin can edit store details
-4. Admin can deactivate store
-5. Admin can view store performance
+**Priority**: P0
+**Requirement**: REQ-6
 
-**Postconditions**: Dark stores managed
+**Description**: System Admin manages user accounts and permissions.
+
+**Preconditions**:
+- Admin has user management permissions
+
+**Main Flow**:
+1. Admin opens user management console
+2. Admin searches for user by email/name
+3. Admin views user details and activity
+4. Admin can modify user roles
+5. Admin can disable/enable accounts
+6. Admin can reset user password
+7. Admin can view audit logs
+
+**Alternative Flows**:
+- **A1**: Bulk user operations (import, export)
+- **A2**: Handle account recovery requests
+
+**Postconditions**:
+- User account modified as needed
+- Audit log updated
 
 ---
 
-#### UC29: Manage Delivery Partners
-**Actor**: System Administrator
-**Preconditions**: Admin is logged in
-**Main Flow**:
-1. Admin opens partner management
-2. Admin can onboard new partner
-3. Admin can verify partner documents
-4. Admin can suspend/activate partner
-5. Admin can view partner performance
+### UC18: Monitor System
 
-**Postconditions**: Delivery partners managed
+**Actor**: System Administrator
+**Priority**: P0
+**Requirement**: REQ-4
+
+**Description**: System Admin monitors platform health and performance.
+
+**Preconditions**:
+- Admin has monitoring access
+
+**Main Flow**:
+1. Admin opens monitoring dashboard
+2. System displays real-time metrics
+3. Admin views active users, lab sessions, API traffic
+4. Admin views system health (services, databases)
+5. Admin views alerts and incidents
+6. Admin can drill down into specific metrics
+
+**Alternative Flows**:
+- **A1**: Respond to critical alert
+- **A2**: View historical trends
+
+**Postconditions**:
+- Admin informed of system status
 
 ---
 
-#### UC30: Configure Pricing
+### UC19: Configure Platform
+
 **Actor**: System Administrator
-**Preconditions**: Admin is logged in
+**Priority**: P1
+**Requirement**: REQ-4, REQ-6
+
+**Description**: System Admin configures platform settings.
+
+**Preconditions**:
+- Admin has configuration permissions
+
 **Main Flow**:
-1. Admin opens pricing configuration
-2. Admin can set base prices
-3. Admin can configure surge pricing rules
-4. Admin can set promotional pricing
-5. Admin can configure delivery fees
+1. Admin opens configuration panel
+2. Admin views current settings
+3. Admin modifies settings (feature flags, limits, policies)
+4. System validates configuration
+5. Admin saves and applies changes
+6. Changes take effect (immediate or after restart)
 
-**Postconditions**: Pricing configured
+**Alternative Flows**:
+- **A1**: Roll back configuration change
+- **A2**: Schedule configuration change
 
----
-
-#### UC31: View Analytics
-**Actor**: System Administrator
-**Preconditions**: Admin is logged in
-**Main Flow**:
-1. Admin opens analytics dashboard
-2. System displays key metrics (orders, revenue, SLA compliance)
-3. Admin can filter by date, city, store
-4. Admin can export reports
-5. Admin can view trends
-
-**Postconditions**: Admin sees analytics
-
----
-
-#### UC32: Handle Exceptions
-**Actor**: System Administrator
-**Preconditions**: Exception occurs (order failed, delivery issue)
-**Main Flow**:
-1. System flags exception
-2. Admin receives notification
-3. Admin reviews exception details
-4. Admin takes action (refund, reassign, etc.)
-5. Admin resolves exception
-6. System updates status
-
-**Postconditions**: Exception resolved
+**Postconditions**:
+- Platform configuration updated
 
 ---
 
 ## Use Case Relationships
 
 ### Include Relationships
-- **UC6 (Place Order)** includes **UC4 (Add to Cart)**
-- **UC6 (Place Order)** includes **UC7 (Make Payment)**
-- **UC8 (Track Order)** includes **UC25 (Update Location)**
-- **UC14 (Pick Products)** includes **UC18 (Scan Barcode)**
-- **UC22 (Pick Up Order)** includes **UC21 (Navigate to Store)**
-- **UC24 (Deliver Order)** includes **UC23 (Navigate to Customer)**
+- UC2 (Enroll) **includes** Authentication
+- UC3 (Watch Video) **includes** Track Progress
+- UC4 (Start Lab) **includes** Provision Environment
+- UC5 (Complete Lab) **includes** Validate Completion
+- UC6 (Get AI Help) **includes** Capture Context
+- UC13 (Publish) **includes** UC15 (Review)
 
 ### Extend Relationships
-- **UC6 (Place Order)** extends **UC9 (Cancel Order)** if cancellation needed
-- **UC24 (Deliver Order)** extends **UC12 (Rate Order)** after delivery
+- UC3 (Watch Video) **extended by** Create Bookmark
+- UC4 (Start Lab) **extended by** Extend Session
+- UC5 (Complete Lab) **extended by** UC6 (Get AI Help)
+- UC9 (Earn Certificate) **extended by** Share on LinkedIn
 
-### Generalization Relationships
-- **UC1 (Browse Products)** and **UC2 (Search Products)** are specialized forms of product discovery
-- **UC21 (Navigate to Store)** and **UC23 (Navigate to Customer)** are specialized forms of navigation
+### Generalization
+- Browse Courses, Search Courses → Discover Content
+- Video Progress, Lab Progress → Track Progress
+- Single Enrollment, Bulk Enrollment → Enrollment
 
 ---
 
-**Last Updated**: January 2025
+**Last Updated**: January 2026
 **Version**: 1.0
 **Status**: Design Complete, Implementation Pending

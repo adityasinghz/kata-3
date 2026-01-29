@@ -1,431 +1,175 @@
-# LearnCraft - Sequence Diagrams
+# Sequence Diagrams - Smart Hospital ICU Management System
 
 > **⚠️ Core Requirements**: Each sequence diagram maps to the core requirements defined in [KEY_REQUIREMENTS.md](./KEY_REQUIREMENTS.md).
 
 ## Table of Contents
-1. [Course Enrollment Flow](#course-enrollment-flow)
-2. [Video Streaming Flow](#video-streaming-flow)
-3. [Lab Session Lifecycle](#lab-session-lifecycle)
-4. [AI Assistance Request Flow](#ai-assistance-request-flow)
-5. [Progress Tracking Flow](#progress-tracking-flow)
-6. [Content Publishing Flow](#content-publishing-flow)
+1. [Bed Allocation & Reservation Flow](#bed-allocation--reservation-flow)
+2. [Emergency Override (Code Blue)](#emergency-override-code-blue)
+3. [Patient Discharge & Bed Cleaning](#patient-discharge--bed-cleaning)
+4. [IoT Vitals Alert & Auto-Transfer](#iot-vitals-alert--auto-transfer)
 
 ---
 
-## Course Enrollment Flow
+## Bed Allocation & Reservation Flow
 
-**Requirement**: REQ-1 (Learning Content Delivery)
-**Use Case**: UC2 (Enroll in Course)
+**Requirement**: Priority-Based Auto-Allocation Implementation
+**Use Case**: UC-1 (Bed Allocation)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant L as Learner
-    participant UI as Web App
-    participant GW as API Gateway
-    participant CS as Course Service
-    participant US as User Service
-    participant PS as Payment Service
-    participant NS as Notification Service
+    participant Nurse as Ward Nurse (UI)
+    participant API as API Gateway
+    participant Auth as Auth Service
+    participant BedSvc as Bed Mgmt Service
+    participant AllocSvc as Allocation Engine
+    participant DB as Database (PostgreSQL)
+    participant Notif as Notification Service
+
+    Nurse->>API: GET /beds?type=ICU&capability=VENTILATOR
+    API->>Auth: validateToken(jwt)
+    Auth-->>API: Token Valid (Role: NURSE)
+    API->>BedSvc: searchBeds(criteria)
+    BedSvc->>DB: SELECT * FROM beds WHERE type='ICU' AND status='AVAILABLE'
+    DB-->>BedSvc: List[Bed]
+    BedSvc-->>API: 200 OK (List of Beds)
+    API-->>Nurse: Display Bed List
+
+    Nurse->>API: POST /reservations {patientId, bedId}
+    API->>BedSvc: createReservation(dto)
+    
+    BedSvc->>DB: BEGIN TRANSACTION
+    BedSvc->>DB: SELECT status, version FROM beds WHERE id=bedId FOR UPDATE
+    
+    alt Bed is Available
+        DB-->>BedSvc: status='AVAILABLE'
+        BedSvc->>AllocSvc: validateRules(patient, bed)
+        AllocSvc-->>BedSvc: Validation Passed
+        
+        BedSvc->>DB: INSERT INTO reservations (...)
+        BedSvc->>DB: UPDATE beds SET status='RESERVED', version=v+1
+        BedSvc->>DB: COMMIT
+        DB-->>BedSvc: Success
+        
+        BedSvc->>Notif: sendConfirmation(nurseId, bedId)
+        Notif-->>Nurse: Push "Reservation Confirmed"
+        BedSvc-->>API: 201 Created
+        API-->>Nurse: Show Success Modal
+    else Bed was taken (Race Condition)
+        DB-->>BedSvc: status='RESERVED'
+        BedSvc->>DB: ROLLBACK
+        BedSvc-->>API: 409 Conflict "Bed already taken"
+        API-->>Nurse: Error "Please select another bed"
+    end
+```
+
+---
+
+## Emergency Override (Code Blue)
+
+**Requirement**: Emergency Priority Handling
+**Use Case**: UC-2 (Emergency Override)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Doc as Doctor (Mobile)
+    participant API as API Gateway
+    participant BedSvc as Bed Mgmt Service
+    participant Audit as Audit Service
+    participant DB as Database
+    participant Push as Push Notification System
+
+    Doc->>API: POST /allocations/override {bedId, reason="Code Blue"}
+    API->>BedSvc: processOverride(dto)
+    
+    BedSvc->>BedSvc: checkPermission(User.Role == DOCTOR)
+    
+    BedSvc->>DB: SELECT * FROM reservations WHERE bed_id=bedId
+    DB-->>BedSvc: existingReservation (Patient B)
+    
+    par Cancel Old Reservation
+        BedSvc->>DB: UPDATE reservations SET status='CANCELLED' WHERE id=resId
+        BedSvc->>Push: notify(StaffB, "Reservation Cancelled: Emergency Override")
+    and Create New Allocation
+        BedSvc->>DB: UPDATE beds SET status='OCCUPIED', patient_id=PatientA
+    and Log Audit
+        BedSvc->>Audit: logEvent("OVERRIDE", {actor: Doc, reason: "Code Blue"})
+        Audit->>DB: INSERT INTO audit_logs
+    end
+
+    BedSvc-->>API: 200 OK
+    API-->>Doc: "Bed Override Successful"
+```
+
+---
+
+## Patient Discharge & Bed Cleaning
+
+**Requirement**: Intelligent Patient Flow
+**Use Case**: UC-4 (Mark Bed Clean)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant HIS as Legacy HIS (ADT)
+    participant Listener as HL7 Listener
+    participant BedSvc as Bed Mgmt Service
+    participant DB as Database
+    participant Porter as Housekeeping App (Mobile)
+
+    HIS->>Listener: HL7 ADT_A03 (Discharge)
+    Listener->>Listener: Parse Message (PatientID, BedID)
+    Listener->>BedSvc: handleDischarge(bedId)
+    
+    BedSvc->>DB: UPDATE beds SET status='CLEANING', current_patient=NULL
+    BedSvc->>Porter: dispatchJob({type: "Terminal Clean", bedId})
+    
+    Note over Porter: Porter receives alert,<br/>cleans the room
+    
+    Porter->>API: POST /beds/{id}/clean-complete
+    API->>BedSvc: markClean(bedId)
+    BedSvc->>DB: UPDATE beds SET status='AVAILABLE', last_cleaned=NOW()
+    
+    BedSvc->>Push: notifyAdmissionDesk("Bed Ready")
+```
+
+---
+
+## IoT Vitals Alert & Auto-Transfer
+
+**Requirement**: Smart ICU Integration
+**Use Case**: UC-5 (Real-Time Acuity Update)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Device as Bedside Monitor
+    participant IoT as IoT Gateway
+    participant BedSvc as Bed Mgmt Service
+    participant Doc as ICU Doctor
     participant DB as Database
 
-    L->>UI: Click "Enroll" on course
-    UI->>GW: POST /api/courses/{id}/enroll
-    GW->>GW: Authenticate token
-    GW->>CS: enrollInCourse(userId, courseId)
-    CS->>US: getUserSubscription(userId)
-    US->>DB: SELECT subscription FROM users
-    DB-->>US: Subscription details
-    
-    alt Course included in subscription
-        US-->>CS: Subscription active
-        CS->>DB: INSERT INTO enrollments
-        DB-->>CS: Enrollment created
-        CS->>NS: sendEnrollmentNotification(userId, courseId)
-        NS-->>CS: Notification queued
-        CS-->>GW: Enrollment success
-        GW-->>UI: 201 Created
-        UI-->>L: "Successfully enrolled!"
-    else Requires purchase
-        US-->>CS: Payment required
-        CS-->>GW: Payment required
-        GW-->>UI: 402 Payment Required
-        UI->>L: Show payment options
-        L->>UI: Select payment method
-        UI->>GW: POST /api/payments/checkout
-        GW->>PS: createCheckoutSession()
-        PS-->>GW: Checkout URL
-        GW-->>UI: Redirect to payment
-        UI-->>L: Redirect to payment gateway
+    loop Every 1 second
+        Device->>IoT: MQTT: telemetry/vitals {hr: 140, spo2: 88}
     end
-```
 
----
-
-## Video Streaming Flow
-
-**Requirement**: REQ-1 (Learning Content Delivery)
-**Use Case**: UC3 (Watch Video Lesson)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant L as Learner
-    participant UI as Web App
-    participant VP as Video Player
-    participant GW as API Gateway
-    participant CS as Content Service
-    participant PS as Progress Service
-    participant CDN as CDN
-    participant AI as AI Service
-
-    L->>UI: Navigate to lesson
-    UI->>GW: GET /api/lessons/{id}
-    GW->>CS: getLessonContent(lessonId)
-    CS-->>GW: Lesson metadata + video reference
-    GW-->>UI: Lesson data
-    UI->>VP: Initialize player
+    IoT->>IoT: Analyze Stream (Rule: SpO2 < 90 for 10s)
     
-    VP->>GW: GET /api/videos/{id}/stream
-    GW->>CS: getStreamingUrl(videoId, userId)
-    CS->>CS: Generate signed CDN URL
-    CS-->>GW: Signed streaming URL
-    GW-->>VP: HLS manifest URL
+    IoT->>BedSvc: triggerAlert({severity: HIGH, type: "Desaturation"})
+    BedSvc->>DB: UPDATE patient_acuity SET score='CRITICAL'
     
-    VP->>CDN: GET manifest.m3u8
-    CDN-->>VP: HLS manifest
-    VP->>CDN: GET segment_001.ts
-    CDN-->>VP: Video segment
-    VP->>L: Play video
+    BedSvc->>Doc: Send Pager Alert "Bed 4: Patient Destabilizing"
     
-    loop Every 30 seconds
-        VP->>GW: POST /api/progress/video
-        GW->>PS: updateVideoProgress(userId, videoId, position)
-        PS-->>GW: Progress saved
+    opt Auto-Suggestion
+        BedSvc->>BedSvc: checkResources(Bed 4)
+        alt Bed 4 has no Ventilator
+            BedSvc->>Doc: Suggest Transfer -> "Bed 8 (Has Ventilator)"
+        end
     end
-    
-    VP->>GW: POST /api/progress/video (complete)
-    GW->>PS: markVideoComplete(userId, videoId)
-    PS-->>GW: Marked complete
-    
-    GW->>AI: getVideoSummary(videoId)
-    AI-->>GW: AI-generated summary
-    GW-->>UI: Show summary
-    UI-->>L: Display video summary
-```
-
----
-
-## Lab Session Lifecycle
-
-**Requirement**: REQ-2 (Hands-On Lab Environment)
-**Use Case**: UC4, UC5 (Start Lab, Complete Lab)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant L as Learner
-    participant UI as Web App
-    participant GW as API Gateway
-    participant LS as Lab Service
-    participant RM as Resource Manager
-    participant K8s as Kubernetes
-    participant TS as Terminal Service
-    participant PS as Progress Service
-    participant AI as AI Service
-
-    L->>UI: Click "Start Lab"
-    UI->>GW: POST /api/labs/{id}/sessions
-    GW->>LS: createLabSession(userId, labId)
-    
-    LS->>LS: Check session limits
-    LS->>RM: allocateResources(labSpec)
-    RM->>K8s: Request pod from pool
-    K8s-->>RM: Pod assigned
-    RM->>K8s: Configure environment
-    K8s-->>RM: Environment ready
-    RM-->>LS: Container ID + terminal URL
-    
-    LS-->>GW: Session created (sessionId, terminalUrl)
-    GW-->>UI: Lab session details
-    UI->>TS: WebSocket connect
-    TS-->>UI: Terminal connected
-    UI-->>L: Lab environment ready
-    
-    loop During lab session
-        L->>UI: Type command
-        UI->>TS: Send input (WebSocket)
-        TS->>K8s: Execute in container
-        K8s-->>TS: Command output
-        TS-->>UI: Output (WebSocket)
-        UI-->>L: Display output
-    end
-    
-    alt Request hint
-        L->>UI: Click "Get Hint"
-        UI->>GW: POST /api/ai/hint
-        GW->>AI: getContextualHint(sessionId, context)
-        AI-->>GW: Hint response
-        GW-->>UI: Display hint
-        UI-->>L: Show hint
-    end
-    
-    L->>UI: Click "Check Solution"
-    UI->>GW: POST /api/labs/sessions/{id}/validate
-    GW->>LS: validateCompletion(sessionId)
-    LS->>K8s: Run validation script
-    K8s-->>LS: Validation result
-    LS->>PS: updateLabProgress(userId, labId, result)
-    PS-->>LS: Progress updated
-    LS-->>GW: Validation result
-    GW-->>UI: Show result
-    UI-->>L: "Lab completed!" or feedback
-    
-    Note over LS,K8s: Session cleanup on timeout/complete
-    LS->>RM: releaseResources(sessionId)
-    RM->>K8s: Terminate pod
-    K8s-->>RM: Pod terminated
-```
-
----
-
-## AI Assistance Request Flow
-
-**Requirement**: REQ-3 (AI-Driven Learning Assistance)
-**Use Case**: UC6 (Get AI Assistance)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant L as Learner
-    participant UI as Web App
-    participant GW as API Gateway
-    participant AI as AI Service
-    participant VDB as Vector DB
-    participant LLM as OpenAI API
-    participant DB as Database
-
-    L->>UI: Type question in chat
-    UI->>GW: POST /api/ai/chat
-    GW->>AI: processQuery(userId, query, context)
-    
-    AI->>AI: Extract learning context
-    Note over AI: Context includes: current course,<br/>lesson, lab state, history
-    
-    AI->>VDB: searchSimilar(query, courseId)
-    VDB-->>AI: Relevant content chunks
-    
-    AI->>AI: Build RAG prompt
-    Note over AI: System prompt + context +<br/>relevant content + user query
-    
-    AI->>LLM: Generate response
-    LLM-->>AI: AI response
-    
-    AI->>AI: Post-process response
-    Note over AI: Add citations, format code,<br/>filter inappropriate content
-    
-    AI->>DB: Log interaction
-    DB-->>AI: Logged
-    
-    AI-->>GW: Formatted response
-    GW-->>UI: AI response
-    UI-->>L: Display response
-    
-    opt Learner feedback
-        L->>UI: Rate response (👍/👎)
-        UI->>GW: POST /api/ai/feedback
-        GW->>AI: logFeedback(interactionId, rating)
-        AI->>DB: Store feedback
-    end
-```
-
----
-
-## Progress Tracking Flow
-
-**Requirement**: REQ-7 (Progress Tracking & Analytics)
-**Use Case**: UC8 (View Progress)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant L as Learner
-    participant UI as Web App
-    participant GW as API Gateway
-    participant PS as Progress Service
-    participant AS as Analytics Service
-    participant Cache as Redis
-    participant DB as Database
-
-    L->>UI: Open Progress Dashboard
-    UI->>GW: GET /api/progress/dashboard
-    GW->>PS: getDashboard(userId)
-    
-    PS->>Cache: GET progress:{userId}
-    alt Cache hit
-        Cache-->>PS: Cached progress data
-    else Cache miss
-        PS->>DB: SELECT progress, enrollments, achievements
-        DB-->>PS: Progress data
-        PS->>Cache: SET progress:{userId}
-    end
-    
-    PS->>AS: getLearningStats(userId)
-    AS->>DB: SELECT time_spent, streaks, etc.
-    DB-->>AS: Learning statistics
-    AS-->>PS: Stats data
-    
-    PS-->>GW: Dashboard data
-    GW-->>UI: Progress response
-    UI-->>L: Display dashboard
-    
-    Note over L,UI: Dashboard shows:<br/>- Overall progress %<br/>- Per-course progress<br/>- Learning streak<br/>- Time spent<br/>- Achievements
-    
-    L->>UI: Click on specific course
-    UI->>GW: GET /api/progress/courses/{id}
-    GW->>PS: getCourseProgress(userId, courseId)
-    PS->>DB: SELECT detailed progress
-    DB-->>PS: Module/lesson progress
-    PS-->>GW: Detailed progress
-    GW-->>UI: Course progress
-    UI-->>L: Show per-module breakdown
-```
-
----
-
-## Content Publishing Flow
-
-**Requirement**: REQ-8 (Content Management)
-**Use Case**: UC13 (Publish Course)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant I as Instructor
-    participant UI as Instructor Portal
-    participant GW as API Gateway
-    participant CMS as Content Management
-    participant VS as Video Service
-    participant LS as Lab Service
-    participant NS as Notification Service
-    participant CA as Content Admin
-
-    I->>UI: Click "Submit for Review"
-    UI->>GW: POST /api/courses/{id}/submit
-    GW->>CMS: submitForReview(courseId)
-    
-    CMS->>CMS: Validate completeness
-    Note over CMS: Check: all modules have content,<br/>videos processed, labs configured
-    
-    alt Validation fails
-        CMS-->>GW: Validation errors
-        GW-->>UI: 400 Validation failed
-        UI-->>I: Show missing requirements
-    else Validation passes
-        CMS->>CMS: Update status to "PENDING_REVIEW"
-        CMS->>NS: notifyReviewers(courseId)
-        NS-->>CMS: Notification sent
-        CMS-->>GW: Review submitted
-        GW-->>UI: 200 Submitted
-        UI-->>I: "Course submitted for review"
-    end
-    
-    NS->>CA: Review notification
-    CA->>UI: Open review queue
-    UI->>GW: GET /api/admin/courses/{id}/review
-    GW->>CMS: getCourseForReview(courseId)
-    CMS-->>GW: Full course details
-    GW-->>UI: Course content
-    UI-->>CA: Display course for review
-    
-    CA->>UI: Test lab environment
-    UI->>GW: POST /api/labs/{id}/test
-    GW->>LS: testLabTemplate(labId)
-    LS-->>GW: Lab test result
-    GW-->>UI: Test results
-    
-    alt Review approved
-        CA->>UI: Click "Approve"
-        UI->>GW: POST /api/admin/courses/{id}/approve
-        GW->>CMS: publishCourse(courseId)
-        CMS->>CMS: Update status to "PUBLISHED"
-        CMS->>VS: activateCDN(courseVideos)
-        CMS->>LS: activateLabs(courseLabs)
-        CMS->>NS: notifyInstructor(courseId, "approved")
-        CMS-->>GW: Course published
-        GW-->>UI: 200 Published
-        NS->>I: "Your course is now live!"
-    else Review rejected
-        CA->>UI: Click "Request Changes"
-        CA->>UI: Enter feedback
-        UI->>GW: POST /api/admin/courses/{id}/reject
-        GW->>CMS: rejectCourse(courseId, feedback)
-        CMS->>CMS: Update status to "REVISION_NEEDED"
-        CMS->>NS: notifyInstructor(courseId, feedback)
-        NS->>I: Review feedback email
-    end
-```
-
----
-
-## Certificate Issuance Flow
-
-**Requirement**: REQ-7 (Progress Tracking)
-**Use Case**: UC9 (Earn Certificate)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant L as Learner
-    participant UI as Web App
-    participant GW as API Gateway
-    participant PS as Progress Service
-    participant CS as Certificate Service
-    participant DB as Database
-    participant S3 as Storage
-
-    L->>UI: Complete final lesson/lab
-    UI->>GW: POST /api/progress/complete
-    GW->>PS: markComplete(userId, lessonId)
-    PS->>DB: Update progress
-    
-    PS->>PS: Check course completion
-    PS->>DB: SELECT COUNT(*) FROM completed_items
-    DB-->>PS: All items completed?
-    
-    alt Course not fully complete
-        PS-->>GW: Progress updated
-        GW-->>UI: Progress saved
-    else Course completed
-        PS->>CS: issueCertificate(userId, courseId)
-        CS->>CS: Generate certificate ID
-        CS->>CS: Render certificate PDF
-        CS->>S3: Upload certificate
-        S3-->>CS: Certificate URL
-        CS->>DB: INSERT INTO certificates
-        DB-->>CS: Certificate record created
-        CS-->>PS: Certificate issued
-        PS-->>GW: Course completed + certificate
-        GW-->>UI: Completion + certificate data
-        UI-->>L: 🎉 "Congratulations! Certificate earned"
-    end
-    
-    L->>UI: View certificate
-    UI->>GW: GET /api/certificates/{id}
-    GW->>CS: getCertificate(certId)
-    CS->>DB: SELECT certificate
-    DB-->>CS: Certificate data
-    CS-->>GW: Certificate details + PDF URL
-    GW-->>UI: Certificate
-    UI-->>L: Display certificate preview
-    
-    L->>UI: Share on LinkedIn
-    UI-->>L: LinkedIn share dialog
-    Note over L,UI: Certificate includes<br/>verification URL
 ```
 
 ---
 
 **Last Updated**: January 2026
 **Version**: 1.0
-**Status**: Design Complete, Implementation Pending
